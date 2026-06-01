@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -100,7 +100,7 @@ async def test_bybit_uses_rolling_window_and_warns(httpx_mock):
 
     assert {line.asset: line.amount for line in result.lines} == {"USDT": Decimal("12.5")}
     assert adapter.supports_date_range is False
-    assert any("скользящие" in note for note in result.notes)
+    assert any("скольз" in note for note in result.notes)
     assert len(httpx_mock.get_requests()) == 1  # no per-window paging for Bybit
 
 
@@ -142,6 +142,10 @@ async def test_bybit_real_shape_month_picks_30day(httpx_mock):
     assert {line.asset: line.amount for line in result.lines} == {"USDT": Decimal("148.64458062")}
     # Empty-string coins must not trigger the "other coins" note.
     assert not any("только USDT" in note for note in result.notes)
+    # Period must reflect the rolling 30-day window (ending today), not the request.
+    today = datetime.now(timezone.utc).date()
+    assert result.date_to.date() == today
+    assert (result.date_to.date() - result.date_from.date()).days == 30
 
 
 async def test_bybit_list_shape_only_usdt(httpx_mock):

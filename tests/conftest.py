@@ -15,7 +15,7 @@ def make_settings(**aliases: Any) -> Settings:
     """
     defaults: dict[str, Any] = {
         "BOT_TOKEN": "123:abc",
-        "USER_TELEGRAM_ID": "111",
+        "USER_TELEGRAM_IDS": "111",
         "DEVELOPER_TELEGRAM_ID": "222",
     }
     defaults.update(aliases)

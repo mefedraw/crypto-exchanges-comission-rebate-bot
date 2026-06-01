@@ -1,58 +1,49 @@
 """Rendering of bot messages (HTML for Telegram).
 
-Centralizes user-facing text so the mandatory accrued-vs-settled disclaimer is
-never accidentally dropped from a result.
+The result shows a single combined **USDT** figure (spot + futures merged) with
+two decimals — other coins (MNT, USDC, …) are intentionally excluded — plus the
+period the figure covers and the mandatory accrued-vs-settled disclaimer.
 """
 
 from __future__ import annotations
 
-from datetime import date
+from decimal import Decimal
 from html import escape
 
 from bot.exchanges.base import CommissionResult
-from bot.utils.dates import DATE_FORMAT
-from bot.utils.money import format_amount
+from bot.utils.dates import format_display
+from bot.utils.money import format_2dp
 
 DISCLAIMER = (
     "⚠️ Оценка <b>начисленной</b> комиссии по данным API. "
-    "Для выплаты сверьтесь с веб-кабинетом партнёра "
-    "(для Bybit и при расхождениях — обязательно)."
+    "Для выплаты сверяйтесь с веб-кабинетом партнёра."
 )
 
 
-def render_confirm(exchange_label: str, uid: str, date_from: date, date_to: date) -> str:
-    return (
-        "Проверьте запрос:\n\n"
-        f"<b>Биржа:</b> {escape(exchange_label)}\n"
-        f"<b>UID:</b> <code>{escape(uid)}</code>\n"
-        f"<b>Период:</b> {date_from:{DATE_FORMAT}} — {date_to:{DATE_FORMAT}}"
+def usdt_total(result: CommissionResult) -> Decimal:
+    """Sum of all USDT lines (across spot/futures); non-USDT coins ignored."""
+    return sum(
+        (line.amount for line in result.lines if line.asset.upper() == "USDT"),
+        Decimal(0),
     )
 
 
 def render_result(result: CommissionResult) -> str:
+    total = usdt_total(result)
+    period = f"{format_display(result.date_from.date())} — {format_display(result.date_to.date())}"
+
     lines: list[str] = [
-        f"<b>Биржа:</b> {escape(result.exchange)}",
-        f"<b>UID:</b> <code>{escape(result.uid)}</code>",
-        f"<b>Период:</b> {result.date_from:{DATE_FORMAT}} — {result.date_to:{DATE_FORMAT}}",
+        f"💰 <b>{escape(result.exchange)}</b>",
+        f"👤 UID: <code>{escape(result.uid)}</code>",
+        f"📆 Период: {period}",
         "",
+        f"Комиссия: <b>{format_2dp(total)} USDT</b>",
     ]
-
-    if result.is_empty:
-        lines.append("По этому UID за период начислений не найдено.")
-    else:
-        lines.append("<b>Начислено (по данным API):</b>")
-        for line in result.lines:
-            source = f" ({escape(line.source)})" if line.source else ""
-            lines.append(f"  • {format_amount(line.amount)} {escape(line.asset)}{source}")
-        if result.total_usdt is not None:
-            lines.append(f"  Σ ≈ {format_amount(result.total_usdt)} USDT")
-
-    lines.append("")
-    lines.append(f"Записей обработано: {result.raw_records_count}")
+    if total == 0:
+        lines.append("<i>За период начислений в USDT не найдено.</i>")
 
     for note in result.notes:
-        lines.append(f"ℹ️ {escape(note)}")
+        lines.append(f"\nℹ️ {escape(note)}")
 
-    lines.append("")
-    lines.append(DISCLAIMER)
+    lines.append(f"\n{DISCLAIMER}")
     return "\n".join(lines)

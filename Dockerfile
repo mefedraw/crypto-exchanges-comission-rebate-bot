@@ -13,8 +13,8 @@ WORKDIR /app
 
 RUN python -m venv "$VIRTUAL_ENV"
 
-# Install dependencies first for better layer caching.
-COPY pyproject.toml ./
+# Project metadata (pyproject references README.md) + source, then install.
+COPY pyproject.toml README.md ./
 COPY bot ./bot
 RUN pip install --upgrade pip && pip install .
 

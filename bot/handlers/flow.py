@@ -1,4 +1,4 @@
-"""The main conversation: exchange → uid → period → confirm → result.
+"""The main conversation: exchange → uid → period → result.
 
 State and data live in aiogram's FSM. Adapters are injected from the dispatcher
 workflow data (``adapters``), so this module stays decoupled from exchange code.
@@ -6,7 +6,7 @@ workflow data (``adapters``), so this module stays decoupled from exchange code.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from aiogram import F, Router
@@ -28,16 +28,34 @@ from bot.keyboards import (
     ExchangeCB,
     NavCB,
     PresetCB,
-    confirm_keyboard,
     date_presets_keyboard,
     exchanges_keyboard,
     result_keyboard,
     start_keyboard,
 )
 from bot.logging import get_logger
-from bot.rendering import render_confirm, render_result
-from bot.utils.dates import DateInputError, day_end, day_start, parse_date, validate_period
+from bot.rendering import render_result
+from bot.utils.dates import (
+    DateInputError,
+    day_end,
+    day_start,
+    format_display,
+    parse_period,
+    smart_month,
+    validate_period,
+)
 from bot.utils.validation import UidInputError, validate_uid
+
+# Reused prompts (with hints).
+_UID_PROMPT = (
+    "Введите <b>UID реферала</b> 👇\n"
+    "<i>Только латинские буквы и цифры, например</i> <code>43305891</code>"
+)
+_PERIOD_PROMPT = "Выберите период расчёта:"
+_CUSTOM_PROMPT = (
+    "Введите период в формате <b>ДД.ММ.ГГГГ-ДД.ММ.ГГГГ</b> 👇\n"
+    "<i>например</i> <code>01.05.2026-31.05.2026</code>"
+)
 
 logger = get_logger(__name__)
 
@@ -47,17 +65,13 @@ router = Router(name="flow")
 _K_CODE = "exchange_code"
 _K_LABEL = "exchange_label"
 _K_UID = "uid"
-_K_FROM = "date_from"
-_K_TO = "date_to"
 
 
 class Flow(StatesGroup):
     choosing_exchange = State()
     entering_uid = State()
     choosing_period = State()
-    entering_date_from = State()
-    entering_date_to = State()
-    confirm = State()
+    entering_period = State()
     fetching = State()
 
 
@@ -79,18 +93,6 @@ def _today() -> date:
     return datetime.now(timezone.utc).date()
 
 
-def _preset_range(kind: str) -> tuple[date, date]:
-    today = _today()
-    if kind == "yesterday":
-        yesterday = today - timedelta(days=1)
-        return yesterday, yesterday
-    if kind == "7d":
-        return today - timedelta(days=6), today
-    if kind == "30d":
-        return today - timedelta(days=29), today
-    raise ValueError(f"Unknown preset: {kind}")
-
-
 async def _show_exchanges(message: Message, state: FSMContext, adapters: dict[str, ExchangeAdapter]) -> None:
     menu = _exchange_menu(adapters)
     if not menu:
@@ -98,17 +100,7 @@ async def _show_exchanges(message: Message, state: FSMContext, adapters: dict[st
         await state.clear()
         return
     await state.set_state(Flow.choosing_exchange)
-    await message.edit_text("Выберите биржу:", reply_markup=exchanges_keyboard(menu))
-
-
-async def _go_confirm(message: Message, state: FSMContext, date_from: date, date_to: date) -> None:
-    data = await state.get_data()
-    await state.update_data({_K_FROM: date_from.isoformat(), _K_TO: date_to.isoformat()})
-    await state.set_state(Flow.confirm)
-    await message.answer(
-        render_confirm(data[_K_LABEL], data[_K_UID], date_from, date_to),
-        reply_markup=confirm_keyboard(),
-    )
+    await message.edit_text("Выберите <b>биржу</b> 👇", reply_markup=exchanges_keyboard(menu))
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +151,7 @@ async def on_exchange_chosen(
     await state.set_state(Flow.entering_uid)
     await callback.answer()
     if isinstance(callback.message, Message):
-        await callback.message.edit_text(f"Биржа: <b>{spec.label}</b>\n\nВведите UID реферала:")
+        await callback.message.edit_text(f"Биржа: <b>{spec.label}</b>\n\n{_UID_PROMPT}")
 
 
 @router.callback_query(NavCB.filter(F.action == "same_exchange"))
@@ -175,7 +167,7 @@ async def on_same_exchange(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_data({_K_CODE: code, _K_LABEL: label})
     await callback.answer()
     if isinstance(callback.message, Message):
-        await callback.message.answer(f"Биржа: <b>{label}</b>\n\nВведите UID реферала:")
+        await callback.message.answer(f"Биржа: <b>{label}</b>\n\n{_UID_PROMPT}")
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +184,7 @@ async def on_uid_entered(message: Message, state: FSMContext) -> None:
         return
     await state.update_data({_K_UID: uid})
     await state.set_state(Flow.choosing_period)
-    await message.answer("Выберите период:", reply_markup=date_presets_keyboard())
+    await message.answer(_PERIOD_PROMPT, reply_markup=date_presets_keyboard())
 
 
 # ---------------------------------------------------------------------------
@@ -201,126 +193,114 @@ async def on_uid_entered(message: Message, state: FSMContext) -> None:
 
 
 @router.callback_query(Flow.choosing_period, PresetCB.filter())
-async def on_preset_chosen(callback: CallbackQuery, callback_data: PresetCB, state: FSMContext) -> None:
+async def on_preset_chosen(
+    callback: CallbackQuery,
+    callback_data: PresetCB,
+    state: FSMContext,
+    adapters: dict[str, ExchangeAdapter],
+    alerter: Alerter,
+) -> None:
     await callback.answer()
     if not isinstance(callback.message, Message):
         return
 
     if callback_data.kind == "custom":
-        await state.set_state(Flow.entering_date_from)
-        await callback.message.edit_text("Введите дату начала (ГГГГ-ММ-ДД):")
+        await state.set_state(Flow.entering_period)
+        await callback.message.edit_text(_CUSTOM_PROMPT)
         return
 
-    try:
-        date_from, date_to = _preset_range(callback_data.kind)
-    except ValueError:
-        await callback.message.edit_text("Неизвестный пресет. /start — заново.")
+    if callback_data.kind != "smart_month":
+        await callback.message.edit_text("Неизвестный период. /start — заново.")
         await state.clear()
         return
 
-    await callback.message.edit_text("Период выбран.")
-    await _go_confirm(callback.message, state, date_from, date_to)
+    date_from, date_to = smart_month(_today())
+    await _fetch_and_render(
+        callback.message, state, adapters, alerter, date_from, date_to, callback.from_user.id
+    )
 
 
-@router.message(Flow.entering_date_from, F.text)
-async def on_date_from_entered(message: Message, state: FSMContext) -> None:
-    try:
-        date_from = parse_date(message.text or "")
-    except DateInputError as exc:
-        await message.answer(str(exc))
-        return
-    await state.update_data({_K_FROM: date_from.isoformat()})
-    await state.set_state(Flow.entering_date_to)
-    await message.answer("Введите дату конца (ГГГГ-ММ-ДД):")
-
-
-@router.message(Flow.entering_date_to, F.text)
-async def on_date_to_entered(message: Message, state: FSMContext) -> None:
-    data = await state.get_data()
-    try:
-        date_from = date.fromisoformat(data[_K_FROM])
-        date_to = parse_date(message.text or "")
-        validate_period(date_from, date_to)
-    except DateInputError as exc:
-        await message.answer(str(exc))
-        return
-    await _go_confirm(message, state, date_from, date_to)
-
-
-# ---------------------------------------------------------------------------
-# Confirm -> fetch -> result
-# ---------------------------------------------------------------------------
-
-
-@router.callback_query(Flow.confirm, NavCB.filter(F.action == "confirm"))
-async def on_confirm(
-    callback: CallbackQuery,
+@router.message(Flow.entering_period, F.text)
+async def on_period_entered(
+    message: Message,
     state: FSMContext,
     adapters: dict[str, ExchangeAdapter],
     alerter: Alerter,
 ) -> None:
-    data = await state.get_data()
-    await callback.answer()
-    if not isinstance(callback.message, Message):
+    try:
+        date_from, date_to = parse_period(message.text or "")
+        validate_period(date_from, date_to)
+    except DateInputError as exc:
+        await message.answer(str(exc))
         return
+    await _fetch_and_render(
+        message, state, adapters, alerter, date_from, date_to, message.from_user.id
+    )
 
-    adapter = adapters.get(data[_K_CODE])
+
+# ---------------------------------------------------------------------------
+# Fetch -> result
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_and_render(
+    message: Message,
+    state: FSMContext,
+    adapters: dict[str, ExchangeAdapter],
+    alerter: Alerter,
+    date_from: date,
+    date_to: date,
+    user_id: int,
+) -> None:
+    data = await state.get_data()
+    code, label, uid = data[_K_CODE], data[_K_LABEL], data[_K_UID]
+
+    adapter = adapters.get(code)
     if adapter is None:
-        await callback.message.edit_text("Биржа стала недоступна. /start — заново.")
+        await message.answer("Биржа стала недоступна. /start — заново.")
         await state.clear()
         return
 
-    uid: str = data[_K_UID]
-    date_from = date.fromisoformat(data[_K_FROM])
-    date_to = date.fromisoformat(data[_K_TO])
-    user_id = callback.from_user.id
-
     await state.set_state(Flow.fetching)
-    await callback.message.edit_text("⏳ Считаю…")
+    period = f"{format_display(date_from)} — {format_display(date_to)}"
+    status = await message.answer(f"⏳ Считаю комиссию…\n<i>{label}, {period}</i>")
 
     log = logger.bind(
-        user_id=user_id, exchange=data[_K_CODE], uid=uid,
-        date_from=data[_K_FROM], date_to=data[_K_TO],
+        user_id=user_id, exchange=code, uid=uid,
+        date_from=date_from.isoformat(), date_to=date_to.isoformat(),
     )
     try:
         result = await adapter.get_commission(uid, day_start(date_from), day_end(date_to))
     except ExchangeAuthError as exc:
         await alerter.alert_exception(
-            "Проблема с ключами API биржи",
-            exc,
-            context=f"exchange: {data[_K_CODE]}, uid: {uid}",
+            "Проблема с ключами API биржи", exc, context=f"exchange: {code}, uid: {uid}"
         )
-        await _fail(callback.message, state, log, "auth", f"Проблема с доступом к API {data[_K_LABEL]}. Проверьте ключи.")
+        await _fail(status, state, log, "auth", f"🔒 Проблема с доступом к API {label}. Проверьте ключи.")
         return
     except ExchangeRateLimitError:
-        await _fail(callback.message, state, log, "rate_limit", f"{data[_K_LABEL]} ограничивает частоту запросов. Попробуйте позже.")
+        await _fail(status, state, log, "rate_limit", f"⏳ {label} ограничивает частоту запросов. Попробуйте позже.")
         return
     except ExchangeUnavailableError:
-        await _fail(callback.message, state, log, "unavailable", f"{data[_K_LABEL]} не ответила вовремя. Попробуйте позже.")
+        await _fail(status, state, log, "unavailable", f"📡 {label} не ответила вовремя. Попробуйте позже.")
         return
     except ExchangeApiError as exc:
-        await _fail(callback.message, state, log, "api_error", f"Ошибка при запросе к {data[_K_LABEL]}: {exc}")
+        await _fail(status, state, log, "api_error", f"⚠️ Ошибка при запросе к {label}: {exc}")
         return
 
     log.info("request ok", records=result.raw_records_count, lines=len(result.lines))
     # Keep exchange for "same_exchange"; drop the rest.
     await state.set_state(None)
-    await state.set_data({_K_CODE: data[_K_CODE], _K_LABEL: data[_K_LABEL]})
-    await callback.message.answer(render_result(result), reply_markup=result_keyboard())
-
-
-# ---------------------------------------------------------------------------
-# Internal
-# ---------------------------------------------------------------------------
+    await state.set_data({_K_CODE: code, _K_LABEL: label})
+    await status.edit_text(render_result(result), reply_markup=result_keyboard())
 
 
 async def _fail(message: Message, state: FSMContext, log: Any, reason: str, text: str) -> None:
     log.warning("request failed", reason=reason)
     await state.set_state(None)
-    await message.answer(text, reply_markup=result_keyboard())
+    await message.edit_text(text, reply_markup=result_keyboard())
 
 
 # Catch stray text while we're waiting on a button press.
-@router.message(StateFilter(Flow.choosing_exchange, Flow.choosing_period, Flow.confirm))
+@router.message(StateFilter(Flow.choosing_exchange, Flow.choosing_period))
 async def on_unexpected_text(message: Message) -> None:
     await message.answer("Пожалуйста, используйте кнопки выше или /cancel.")

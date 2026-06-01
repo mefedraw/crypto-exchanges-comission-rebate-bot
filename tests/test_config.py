@@ -4,12 +4,18 @@ from tests.conftest import make_settings
 
 
 def test_allowed_ids_from_roles():
-    s = make_settings(USER_TELEGRAM_ID="1", DEVELOPER_TELEGRAM_ID="2")
+    s = make_settings(USER_TELEGRAM_IDS="1", DEVELOPER_TELEGRAM_ID="2")
     assert s.allowed_telegram_ids == frozenset({1, 2})
 
 
+def test_multiple_users_plus_developer():
+    s = make_settings(USER_TELEGRAM_IDS="1, 2 ,3", DEVELOPER_TELEGRAM_ID="9")
+    assert s.user_telegram_ids == frozenset({1, 2, 3})
+    assert s.allowed_telegram_ids == frozenset({1, 2, 3, 9})
+
+
 def test_allowed_ids_dedupe_when_roles_equal():
-    s = make_settings(USER_TELEGRAM_ID="5", DEVELOPER_TELEGRAM_ID="5")
+    s = make_settings(USER_TELEGRAM_IDS="5", DEVELOPER_TELEGRAM_ID="5")
     assert s.allowed_telegram_ids == frozenset({5})
 
 

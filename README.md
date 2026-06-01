@@ -28,10 +28,11 @@ python -m bot.main
 All configuration comes from the environment (see [.env.example](.env.example)).
 
 - `BOT_TOKEN` — Telegram bot token.
-- `USER_TELEGRAM_ID` — the owner who uses the bot to calculate commission.
+- `USER_TELEGRAM_IDS` — owners who use the bot, comma-separated (one or more).
 - `DEVELOPER_TELEGRAM_ID` — receives failure alerts (unhandled errors, API-key
-  problems) and may also use the bot. May equal `USER_TELEGRAM_ID`.
-  Only these two IDs are whitelisted; every other update is silently ignored.
+  problems) and may also use the bot. May be one of `USER_TELEGRAM_IDS`.
+  The whitelist is all user IDs plus the developer; every other update is
+  silently ignored.
 - `MASTER_KEY` — optional Fernet key. When set, exchange credentials are treated
   as encrypted tokens and decrypted in memory at runtime.
 - `<EXCHANGE>_API_KEY` / `_API_SECRET` / `_API_PASSPHRASE` — per exchange. Leave

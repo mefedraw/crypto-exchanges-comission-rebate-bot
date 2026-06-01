@@ -68,8 +68,10 @@ class Settings(BaseSettings):
 
     # ---- Telegram (roles) ----
     bot_token: SecretStr = Field(..., alias="BOT_TOKEN")
-    # The owner who uses the bot to calculate commission.
-    user_telegram_id: int = Field(..., alias="USER_TELEGRAM_ID")
+    # The owners who use the bot — one or more IDs, comma-separated.
+    # Kept as a raw string so pydantic-settings doesn't JSON-decode it; parsed by
+    # the `user_telegram_ids` property below.
+    user_telegram_ids_raw: str = Field(..., alias="USER_TELEGRAM_IDS")
     # The developer who receives alerts (and may also use the bot).
     developer_telegram_id: int = Field(..., alias="DEVELOPER_TELEGRAM_ID")
 
@@ -117,9 +119,21 @@ class Settings(BaseSettings):
     mexc_api_secret: SecretStr | None = Field(default=None, alias="MEXC_API_SECRET")
 
     @cached_property
+    def user_telegram_ids(self) -> frozenset[int]:
+        """Owner IDs parsed from the comma-separated USER_TELEGRAM_IDS value."""
+        try:
+            return frozenset(
+                int(part) for part in self.user_telegram_ids_raw.split(",") if part.strip()
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "USER_TELEGRAM_IDS must be comma-separated integers, e.g. '123,456'."
+            ) from exc
+
+    @cached_property
     def allowed_telegram_ids(self) -> frozenset[int]:
-        """Whitelist = the two role IDs (deduped). Everyone else is ignored."""
-        return frozenset({self.user_telegram_id, self.developer_telegram_id})
+        """Whitelist = all user IDs plus the developer (deduped). Everyone else is ignored."""
+        return self.user_telegram_ids | {self.developer_telegram_id}
 
     @cached_property
     def _cipher(self) -> SecretCipher | None:

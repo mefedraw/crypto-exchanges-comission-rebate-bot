@@ -8,8 +8,12 @@ from bot.utils.dates import (
     DateInputError,
     day_end,
     day_start,
+    format_display,
     iter_windows,
     parse_date,
+    parse_ddmmyyyy,
+    parse_period,
+    smart_month,
     to_millis,
     to_seconds,
     validate_period,
@@ -78,3 +82,41 @@ def test_timestamp_helpers():
     dt = day_start(date(1970, 1, 1))
     assert to_seconds(dt) == 0
     assert to_millis(dt) == 0
+
+
+def test_parse_ddmmyyyy():
+    assert parse_ddmmyyyy("01.05.2026") == date(2026, 5, 1)
+    with pytest.raises(DateInputError):
+        parse_ddmmyyyy("2026-05-01")
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["01.05.2026-31.05.2026", "01.05.2026 - 31.05.2026", "01.05.2026—31.05.2026"],
+)
+def test_parse_period_ok(text):
+    assert parse_period(text) == (date(2026, 5, 1), date(2026, 5, 31))
+
+
+@pytest.mark.parametrize("bad", ["01.05.2026", "a-b", "01.05.2026-", "1.5.26-2.5.26x"])
+def test_parse_period_rejects(bad):
+    with pytest.raises(DateInputError):
+        parse_period(bad)
+
+
+def test_format_display():
+    assert format_display(date(2026, 5, 1)) == "01.05.2026"
+
+
+def test_smart_month_uses_previous_month_midmonth():
+    # Mid-month -> previous (completed) month.
+    assert smart_month(date(2026, 6, 15)) == (date(2026, 5, 1), date(2026, 5, 31))
+
+
+def test_smart_month_uses_current_month_near_end():
+    # Day >= 28 -> current month.
+    assert smart_month(date(2026, 6, 29)) == (date(2026, 6, 1), date(2026, 6, 30))
+
+
+def test_smart_month_january_rolls_to_december():
+    assert smart_month(date(2026, 1, 10)) == (date(2025, 12, 1), date(2025, 12, 31))

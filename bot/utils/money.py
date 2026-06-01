@@ -7,7 +7,7 @@ while preserving precision (no rounding of stored values).
 from __future__ import annotations
 
 from collections.abc import Iterable
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 
 class MoneyError(ValueError):
@@ -49,3 +49,8 @@ def format_amount(amount: Decimal) -> str:
         normalized = normalized.quantize(Decimal(1))
     text = format(normalized, "f")
     return text
+
+
+def format_2dp(amount: Decimal) -> str:
+    """Format an amount with exactly two decimals (for the headline USDT total)."""
+    return f"{amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP):f}"

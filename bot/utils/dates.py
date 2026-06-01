@@ -9,11 +9,18 @@ Conventions:
 
 from __future__ import annotations
 
+import calendar
+import re
 from collections.abc import Iterator
 from datetime import date, datetime, time, timedelta, timezone
 
 DATE_FORMAT = "%Y-%m-%d"
+DISPLAY_FORMAT = "%d.%m.%Y"  # user-facing DD.MM.YYYY
 _MAX_PERIOD_DAYS = 365
+# Day-of-month threshold at/after which "smart month" means the current month.
+_CURRENT_MONTH_FROM_DAY = 28
+# Period separator: hyphen or en/em dash, optional surrounding spaces.
+_PERIOD_SEP = re.compile(r"\s*[-–—]\s*")
 
 
 class DateInputError(ValueError):
@@ -27,6 +34,45 @@ def parse_date(raw: str) -> date:
         return datetime.strptime(text, DATE_FORMAT).date()
     except ValueError as exc:
         raise DateInputError("Дата должна быть в формате ГГГГ-ММ-ДД, например 2026-05-01.") from exc
+
+
+def parse_ddmmyyyy(raw: str) -> date:
+    """Parse a strict ``DD.MM.YYYY`` string into a :class:`date`."""
+    try:
+        return datetime.strptime(raw.strip(), DISPLAY_FORMAT).date()
+    except ValueError as exc:
+        raise DateInputError("Дата в формате ДД.ММ.ГГГГ, например 01.05.2026.") from exc
+
+
+def parse_period(raw: str) -> tuple[date, date]:
+    """Parse a ``DD.MM.YYYY-DD.MM.YYYY`` range into ``(date_from, date_to)``."""
+    parts = _PERIOD_SEP.split(raw.strip())
+    if len(parts) != 2 or not all(parts):
+        raise DateInputError(
+            "Формат периода: ДД.ММ.ГГГГ-ДД.ММ.ГГГГ, например 01.05.2026-31.05.2026."
+        )
+    return parse_ddmmyyyy(parts[0]), parse_ddmmyyyy(parts[1])
+
+
+def format_display(d: date) -> str:
+    """Format a date as user-facing ``DD.MM.YYYY``."""
+    return d.strftime(DISPLAY_FORMAT)
+
+
+def smart_month(today: date) -> tuple[date, date]:
+    """First/last day of the target month for the "calculate the month" preset.
+
+    Near month-end (day >= 28) the current month is assumed to be the one of
+    interest; otherwise the previous (completed) month is used.
+    """
+    if today.day >= _CURRENT_MONTH_FROM_DAY:
+        year, month = today.year, today.month
+    elif today.month == 1:
+        year, month = today.year - 1, 12
+    else:
+        year, month = today.year, today.month - 1
+    last_day = calendar.monthrange(year, month)[1]
+    return date(year, month, 1), date(year, month, last_day)
 
 
 def validate_period(date_from: date, date_to: date, *, today: date | None = None) -> None:

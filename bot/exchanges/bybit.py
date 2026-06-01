@@ -12,7 +12,7 @@ permission only.
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from urllib.parse import urlencode
 
@@ -71,10 +71,16 @@ class BybitAdapter(BaseHttpAdapter):
         chosen_field = "commissions30Day" if use_30 else "commissions365Day"
         self._add_usdt_commission(result, data.get(chosen_field))
 
-        window_label = "30 дней" if use_30 else "365 дней"
+        # The figure is a rolling window ending "now", not the requested period —
+        # overwrite the result's dates so the bot shows the actual window covered.
+        window_days = 30 if use_30 else 365
+        now = datetime.now(timezone.utc)
+        result.date_from = now - timedelta(days=window_days)
+        result.date_to = now
+
         result.notes.append(
-            f"Bybit API отдаёт только скользящие 30/365 дней — показано скользящее окно «{window_label}», "
-            "а НЕ сумму за выбранный период. Точная сумма — только в Affiliate Portal."
+            f"Bybit API отдаёт только скользящее окно последних {window_days} дней "
+            "(а не сумму за произвольный период). Точная сумма — только в Affiliate Portal."
         )
         result.settlement_note = (
             "Bybit: API не является источником истины для выплат — сверяйтесь с Affiliate Portal."
