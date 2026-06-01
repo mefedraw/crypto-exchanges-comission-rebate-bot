@@ -3,8 +3,10 @@
 Endpoint: GET /api/v2/broker/customer-commissions
 Docs: https://www.bitget.com/api-doc/affiliate/customerInfo/GetDirectCommissions
 
-Field names of the amount/coin and the idLessThan pagination behaviour are not
-fully pinned down — marked ASSUMED and resolved defensively.
+VERIFIED (live): records under data.commissionList; per-record rebate in
+`rebateAmount`, coin in `coin`; pagination via the response-level `endId` cursor
+passed back as `idLessThan` (records themselves carry no id). The *TotalRebateAmount
+fields are running cumulatives and are intentionally not summed.
 """
 
 from __future__ import annotations
@@ -25,10 +27,10 @@ from bot.utils.money import parse_decimal
 
 _PATH = "/api/v2/broker/customer-commissions"
 _PAGE_LIMIT = 100
-# ASSUMED: candidate response field names (verify live).
-_AMOUNT_FIELDS = ("commission", "commissionAmount", "amount", "rebateAmount")
+# VERIFIED (live): per-record rebate is `rebateAmount`, coin is `coin`. The
+# *TotalRebateAmount fields are running cumulatives and must NOT be summed.
+_AMOUNT_FIELDS = ("rebateAmount", "commission", "commissionAmount", "amount")
 _COIN_FIELDS = ("coin", "commissionCoin", "asset", "currency")
-_ID_FIELDS = ("id", "billId", "cTime")
 # VERIFIED: Bitget returns auth failures as HTTP 400 with these business codes.
 _AUTH_ERROR_CODES = {"40009", "40012", "40037", "40006", "40011", "40014"}
 
@@ -89,7 +91,7 @@ class BitgetAdapter(BaseHttpAdapter):
             payload = await self._send(
                 "GET", request_path, headers=self._headers("GET", request_path), log_path=_PATH
             )
-            records = self._extract_records(payload)
+            records, end_id = self._extract_page(payload)
             for record in records:
                 asset = self._first(record, _COIN_FIELDS)
                 amount_raw = self._first(record, _AMOUNT_FIELDS)
@@ -98,27 +100,29 @@ class BitgetAdapter(BaseHttpAdapter):
                 result.add_amount(str(asset), parse_decimal(amount_raw))
             result.raw_records_count += len(records)
 
-            if len(records) < _PAGE_LIMIT:
+            # VERIFIED (live): paginate using the response-level `endId` cursor
+            # (records carry no id). Stop on a short/last page, a missing cursor,
+            # or a non-advancing cursor (defensive against an infinite loop).
+            if len(records) < _PAGE_LIMIT or not end_id or str(end_id) == id_less_than:
                 break
-            last_id = self._first(records[-1], _ID_FIELDS)
-            if last_id is None:
-                break  # can't paginate without a cursor; stop to avoid a loop.
-            id_less_than = str(last_id)
+            id_less_than = str(end_id)
 
-    def _extract_records(self, payload: object) -> list[dict]:
+    def _extract_page(self, payload: object) -> tuple[list[dict], str | None]:
+        """Return (records, endId cursor) from a Bitget commissions response."""
         if not isinstance(payload, dict):
-            return []
+            return [], None
         if str(payload.get("code", "00000")) != "00000":
             raise ExchangeApiError(f"{self.name}: {payload.get('code')} {payload.get('msg')}")
         data = payload.get("data")
         if isinstance(data, list):
-            return data
+            return data, None
         if isinstance(data, dict):
-            for key in ("list", "commissionList", "items"):
+            end_id = data.get("endId")
+            for key in ("commissionList", "list", "items"):
                 inner = data.get(key)
                 if isinstance(inner, list):
-                    return inner
-        return []
+                    return inner, (str(end_id) if end_id else None)
+        return [], None
 
     def _raise_client_error(self, status: int, response: httpx.Response) -> None:
         body = self._safe_json(response)

@@ -21,8 +21,9 @@ from bot.exchanges.signing import hmac_base64
 from bot.utils.money import parse_decimal
 
 _PATH = "/api/v5/affiliate/invitee/detail"
-# ASSUMED: candidate field holding the cumulative commission amount.
-_COMMISSION_FIELDS = ("accCommission", "totalCommission", "commission", "rebateAmt")
+# VERIFIED (live): cumulative commission is in `totalCommission` (USDT). Extra
+# names kept as fallback.
+_COMMISSION_FIELDS = ("totalCommission", "accCommission", "commission", "rebateAmt")
 
 
 class OkxAdapter(BaseHttpAdapter):
@@ -31,7 +32,7 @@ class OkxAdapter(BaseHttpAdapter):
     base_url = "https://www.okx.com"  # VERIFIED: OKX REST host.
     max_window_days = 365
     supports_uid_filter = True
-    supports_date_range = False  # ASSUMED: endpoint returns cumulative detail.
+    supports_date_range = False  # VERIFIED (live): endpoint returns cumulative detail only.
 
     def _iso_timestamp(self) -> str:
         # VERIFIED: OKX requires ISO-8601 millis UTC, e.g. 2020-12-08T09:08:57.715Z.

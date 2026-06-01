@@ -21,14 +21,16 @@ from bot.utils.dates import iter_windows, to_millis
 from bot.utils.money import parse_decimal
 
 _PATH = "/api/v2/affiliate/queryMyCommission"
-_PAGE_SIZE = 100  # ASSUMED: docs allow pageSize; 100 is a safe page.
+_PAGE_SIZE = 100  # VERIFIED (live): page/pageSize pagination, items under data.items.
 
 
 class KucoinAdapter(BaseHttpAdapter):
     name = "KuCoin"
     code = "kucoin"
     base_url = "https://api.kucoin.com"  # VERIFIED: KuCoin REST host.
-    max_window_days = 30  # ASSUMED: window not documented explicitly; keep 30-day chunks.
+    # Per-record payout commissions are additive across windows (live-verified);
+    # 30-day chunks are a safe default (KuCoin accepted them).
+    max_window_days = 30
     supports_uid_filter = True
     supports_date_range = True
 
@@ -83,7 +85,7 @@ class KucoinAdapter(BaseHttpAdapter):
             self._check_envelope(payload)
             items = self._extract_items(payload)
             for item in items:
-                # ASSUMED: each item exposes `commission` + `currency`.
+                # VERIFIED (live): each item exposes `commission` + `currency`.
                 amount = parse_decimal(item["commission"])
                 asset = str(item["currency"])
                 result.add_amount(asset, amount)

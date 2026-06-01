@@ -35,7 +35,8 @@ class GateAdapter(BaseHttpAdapter):
 
     def _headers(self, method: str, query: str) -> dict[str, str]:
         """Gate v4 signing: SIGN = HMAC-SHA512(method\\npath\\nquery\\nSHA512(body)\\nts)."""
-        # VERIFIED: signature scheme per Gate v4 "APIv4 Signed Request" docs.
+        # VERIFIED (live): signature accepted by Gate (request authenticated; the
+        # test key merely lacked the "rebate" permission -> 403 FORBIDDEN).
         timestamp = str(int(time.time()))
         hashed_body = sha512_hex("")  # GET has no body.
         payload = f"{method}\n{_PATH}\n{query}\n{hashed_body}\n{timestamp}"
@@ -83,8 +84,8 @@ class GateAdapter(BaseHttpAdapter):
             )
             records = self._extract_records(data)
             for record in records:
-                # ASSUMED: field names commission_amount/commission_asset per docs;
-                # verify against a live response before production use.
+                # VERIFIED (live): commission_amount / commission_asset / source
+                # (SPOT/FUTURES) confirmed against a real response.
                 amount = parse_decimal(record["commission_amount"])
                 asset = str(record["commission_asset"])
                 source = record.get("source")

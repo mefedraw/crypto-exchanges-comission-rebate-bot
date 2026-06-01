@@ -10,9 +10,11 @@ from pydantic import SecretStr
 
 from bot.config import SPEC_BY_CODE, ExchangeCredentials
 from bot.exchanges.base import ExchangeAuthError, ExchangeRateLimitError
+from bot.exchanges.bitget import BitgetAdapter
 from bot.exchanges.bybit import BybitAdapter
 from bot.exchanges.gate import GateAdapter
 from bot.exchanges.kucoin import KucoinAdapter
+from bot.exchanges.okx import OkxAdapter
 from bot.exchanges.mexc import MexcAdapter
 from bot.utils.dates import day_end, day_start
 from tests.conftest import make_settings
@@ -46,6 +48,24 @@ async def test_gate_sums_by_asset(httpx_mock):
     assert amounts["BTC"] == Decimal("0.001")
     assert result.raw_records_count == 3
     assert result.settlement_note  # disclaimer text present
+
+
+async def test_gate_separates_by_source(httpx_mock):
+    # Live shape: same asset, different source -> reported as separate lines.
+    httpx_mock.add_response(
+        json=[
+            {"commission_amount": "1.0", "commission_asset": "USDT", "source": "FUTURES"},
+            {"commission_amount": "2.0", "commission_asset": "USDT", "source": "FUTURES"},
+            {"commission_amount": "0.5", "commission_asset": "USDT", "source": "SPOT"},
+        ]
+    )
+    adapter = GateAdapter(_creds("gate"), make_settings())
+    result = await adapter.get_commission("48976844", day_start(_DAY), day_end(_DAY))
+    await adapter.aclose()
+
+    by_source = {(l.asset, l.source): l.amount for l in result.lines}
+    assert by_source[("USDT", "FUTURES")] == Decimal("3.0")
+    assert by_source[("USDT", "SPOT")] == Decimal("0.5")
 
 
 async def test_gate_signs_request(httpx_mock):
@@ -188,6 +208,50 @@ async def test_mexc_unmatched_uid_adds_note(httpx_mock):
 
     assert result.is_empty
     assert any("uid-фильтр" in note for note in result.notes)
+
+
+async def test_bitget_paginates_via_endid_and_ignores_cumulative(httpx_mock):
+    # Live shape: records under data.commissionList; paginate via response endId;
+    # sum per-record `rebateAmount`, NOT the cumulative totalRebateAmount.
+    full_page = [
+        {"coin": "USDT", "rebateAmount": "0.5", "totalRebateAmount": "999"} for _ in range(100)
+    ]
+    httpx_mock.add_response(
+        json={"code": "00000", "data": {"endId": "CURSOR1", "commissionList": full_page}}
+    )
+    httpx_mock.add_response(
+        json={
+            "code": "00000",
+            "data": {"endId": "CURSOR2", "commissionList": [{"coin": "USDT", "rebateAmount": "0.25"}]},
+        }
+    )
+    adapter = BitgetAdapter(_creds("bitget", passphrase=True), make_settings())
+    result = await adapter.get_commission("123", day_start(_DAY), day_end(_DAY))
+    await adapter.aclose()
+
+    # 100 * 0.5 + 0.25 == 50.25 (cumulative 999 fields ignored).
+    assert {line.asset: line.amount for line in result.lines} == {"USDT": Decimal("50.25")}
+    assert result.raw_records_count == 101
+    assert len(httpx_mock.get_requests()) == 2  # short second page stops pagination
+
+
+async def test_okx_cumulative_totalcommission_with_warning(httpx_mock):
+    # Live shape: data[0].totalCommission is the cumulative (date-independent) total.
+    httpx_mock.add_response(
+        json={
+            "code": "0",
+            "data": [{"totalCommission": "227.02", "accFee": "454.04", "totalVol": "934116.52"}],
+        }
+    )
+    adapter = OkxAdapter(_creds("okx", passphrase=True), make_settings())
+    result = await adapter.get_commission(
+        "174919725745315840", day_start(date(2026, 5, 1)), day_end(date(2026, 5, 31))
+    )
+    await adapter.aclose()
+
+    assert {line.asset: line.amount for line in result.lines} == {"USDT": Decimal("227.02")}
+    assert adapter.supports_date_range is False
+    assert any("НАКОПЛЕННУЮ" in note for note in result.notes)
 
 
 async def test_auth_error_mapped(httpx_mock):
