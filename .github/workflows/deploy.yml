@@ -1,0 +1,37 @@
+name: Deploy
+
+# Deploy only after CI succeeds on the default branch. Decoupled from CI via
+# workflow_run so a deploy never races ahead of a green build.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Gate: CI passed AND it ran on main/master.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.head_branch == 'main' ||
+       github.event.workflow_run.head_branch == 'master')
+    steps:
+      - name: Deploy over SSH (pull + rebuild)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}  # optional; defaults to 22 if empty
+          script_stop: true
+          script: |
+            set -e
+            cd "${{ secrets.VPS_PROJECT_DIR }}"
+            git fetch --all
+            git reset --hard "origin/${{ github.event.workflow_run.head_branch }}"
+            docker compose up -d --build
+            docker image prune -f

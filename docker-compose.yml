@@ -1,0 +1,28 @@
+services:
+  bot:
+    build: .
+    image: commission-rebate-bot:latest
+    restart: unless-stopped
+
+    # Secrets come from the host .env (chmod 600), never baked into the image.
+    env_file:
+      - .env
+
+    # ---- Runtime hardening ----
+    read_only: true
+    user: app
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Writable scratch space only where the process actually needs it.
+    tmpfs:
+      - /tmp
+
+    # No ports published — long polling makes outbound connections only.
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
