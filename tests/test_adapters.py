@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from pydantic import SecretStr
@@ -256,6 +257,18 @@ async def test_okx_cumulative_totalcommission_with_warning(httpx_mock):
     assert {line.asset: line.amount for line in result.lines} == {"USDT": Decimal("227.02")}
     assert adapter.supports_date_range is False
     assert any("НАКОПЛЕННУЮ" in note for note in result.notes)
+
+
+async def test_bitget_shifts_window_to_utc8(httpx_mock):
+    # Bitget buckets by UTC+8; the query window must be shifted back 8h so that
+    # "01.05" starts at 00:00 UTC+8 (= 30.04 16:00 UTC = ms 1777564800000).
+    httpx_mock.add_response(json={"code": "00000", "data": {"endId": "x", "commissionList": []}})
+    adapter = BitgetAdapter(_creds("bitget", passphrase=True), make_settings())
+    await adapter.get_commission("1", day_start(date(2026, 5, 1)), day_end(date(2026, 5, 1)))
+    await adapter.aclose()
+
+    qs = parse_qs(urlparse(str(httpx_mock.get_requests()[0].url)).query)
+    assert qs["startTime"][0] == "1777564800000"  # 01.05 00:00 UTC+8
 
 
 async def test_auth_error_mapped(httpx_mock):

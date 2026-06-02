@@ -27,6 +27,11 @@ from bot.utils.money import parse_decimal
 
 _PATH = "/api/v2/broker/customer-commissions"
 _PAGE_LIMIT = 100
+# VERIFIED (live + docs): Bitget buckets the `date` field by UTC+8 day, and the
+# partner cabinet filters by UTC+8 calendar dates. We receive UTC day boundaries,
+# so shift them back 8h to align the query window with Bitget's UTC+8 days
+# (otherwise "01.05–31.05" leaks into 01.06 UTC+8 and over-reports).
+_UTC8_OFFSET_MS = 8 * 60 * 60 * 1000
 # VERIFIED (live): per-record rebate is `rebateAmount`, coin is `coin`. The
 # *TotalRebateAmount fields are running cumulatives and must NOT be summed.
 _AMOUNT_FIELDS = ("rebateAmount", "commission", "commissionAmount", "amount")
@@ -80,8 +85,9 @@ class BitgetAdapter(BaseHttpAdapter):
         while True:
             params: dict[str, object] = {
                 "uid": uid,
-                "startTime": to_millis(window_start),
-                "endTime": to_millis(window_end),
+                # Shift UTC boundaries to UTC+8 days to match Bitget's bucketing.
+                "startTime": to_millis(window_start) - _UTC8_OFFSET_MS,
+                "endTime": to_millis(window_end) - _UTC8_OFFSET_MS,
                 "limit": _PAGE_LIMIT,
             }
             if id_less_than is not None:
