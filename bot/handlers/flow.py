@@ -6,8 +6,11 @@ workflow data (``adapters``), so this module stays decoupled from exchange code.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
+
+# Exchanges that only expose a rolling window (no arbitrary date range).
+_ROLLING_ONLY = {"bybit"}
 
 from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
@@ -183,8 +186,12 @@ async def on_uid_entered(message: Message, state: FSMContext) -> None:
         await message.answer(str(exc))
         return
     await state.update_data({_K_UID: uid})
+    data = await state.get_data()
+    rolling_only = data.get(_K_CODE) in _ROLLING_ONLY
     await state.set_state(Flow.choosing_period)
-    await message.answer(_PERIOD_PROMPT, reply_markup=date_presets_keyboard())
+    await message.answer(
+        _PERIOD_PROMPT, reply_markup=date_presets_keyboard(rolling_only=rolling_only)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -209,12 +216,17 @@ async def on_preset_chosen(
         await callback.message.edit_text(_CUSTOM_PROMPT)
         return
 
-    if callback_data.kind != "smart_month":
+    if callback_data.kind == "smart_month":
+        date_from, date_to = smart_month(_today())
+    elif callback_data.kind == "last30":
+        # Rolling 30-day window (Bybit ignores the exact dates and uses its own).
+        today = _today()
+        date_from, date_to = today - timedelta(days=29), today
+    else:
         await callback.message.edit_text("Неизвестный период. /start — заново.")
         await state.clear()
         return
 
-    date_from, date_to = smart_month(_today())
     await _fetch_and_render(
         callback.message, state, adapters, alerter, date_from, date_to, callback.from_user.id
     )

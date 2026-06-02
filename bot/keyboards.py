@@ -52,10 +52,14 @@ def exchanges_keyboard(exchanges: dict[str, str]) -> InlineKeyboardMarkup:
     return _with_cancel(builder)
 
 
-def date_presets_keyboard() -> InlineKeyboardMarkup:
+def date_presets_keyboard(*, rolling_only: bool = False) -> InlineKeyboardMarkup:
+    """Period options. ``rolling_only`` (e.g. Bybit) offers just a fixed window."""
     builder = InlineKeyboardBuilder()
-    builder.button(text="🗓 За месяц (авто)", callback_data=PresetCB(kind="smart_month"))
-    builder.button(text="✍️ Указать период", callback_data=PresetCB(kind="custom"))
+    if rolling_only:
+        builder.button(text="🗓 Последние 30 дней", callback_data=PresetCB(kind="last30"))
+    else:
+        builder.button(text="🗓 За месяц (авто)", callback_data=PresetCB(kind="smart_month"))
+        builder.button(text="✍️ Указать период", callback_data=PresetCB(kind="custom"))
     builder.adjust(1)
     return _with_cancel(builder)
 
