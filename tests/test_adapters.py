@@ -214,7 +214,8 @@ async def test_mexc_filters_uid_and_paginates(httpx_mock):
     assert len(httpx_mock.get_requests()) == 2  # stopped at totalPage
 
 
-async def test_mexc_unmatched_uid_adds_note(httpx_mock):
+async def test_mexc_empty_when_uid_absent(httpx_mock):
+    # Server filters by uid; if the row isn't ours, nothing is summed.
     httpx_mock.add_response(
         json={"code": 0, "data": {"totalPage": 1, "resultList": [{"uid": "111", "total": "9"}]}}
     )
@@ -223,7 +224,18 @@ async def test_mexc_unmatched_uid_adds_note(httpx_mock):
     await adapter.aclose()
 
     assert result.is_empty
-    assert any("uid-фильтр" in note for note in result.notes)
+
+
+async def test_mexc_sends_uid_param(httpx_mock):
+    httpx_mock.add_response(
+        json={"code": 0, "data": {"totalPage": 1, "resultList": [{"uid": "43305891", "total": "5"}]}}
+    )
+    adapter = MexcAdapter(_creds("mexc"), make_settings())
+    await adapter.get_commission("43305891", day_start(_DAY), day_end(_DAY))
+    await adapter.aclose()
+
+    qs = parse_qs(urlparse(str(httpx_mock.get_requests()[0].url)).query)
+    assert qs["uid"][0] == "43305891"
 
 
 async def test_bitget_paginates_via_endid_and_ignores_cumulative(httpx_mock):

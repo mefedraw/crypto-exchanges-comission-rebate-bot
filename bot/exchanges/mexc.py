@@ -4,7 +4,7 @@ Endpoint: GET /api/v3/rebate/affiliate/commission
 Docs: https://www.mexc.com/api-docs/spot-v3/rebate-endpoints
 
 Returns per-invitee rows with spot/etf/futures and a `total` already in USDT.
-Per-uid filtering is not clearly documented, so we filter client-side and note it.
+The `uid` query param filters server-side to a single invitee (verified live).
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ class MexcAdapter(BaseHttpAdapter):
     # queried with the WHOLE period in a single request. The user period is capped at
     # 365 days (validate_period) and MEXC accepts a 365-day range, so one window fits.
     max_window_days = 365
-    supports_uid_filter = False  # endpoint returns ALL invitees; we filter client-side.
+    supports_uid_filter = True  # VERIFIED (live): the `uid` query param filters server-side.
     supports_date_range = True
 
     def _signed_query(self, params: dict[str, object]) -> str:
@@ -62,34 +62,25 @@ class MexcAdapter(BaseHttpAdapter):
         self._log.info("get_commission", uid=uid, date_from=str(date_from), date_to=str(date_to))
 
         total = Decimal(0)
-        matched = False
         for window_start, window_end in iter_windows(
             date_from.date(), date_to.date(), self.max_window_days
         ):
-            window_total, window_matched = await self._collect_window(
-                uid, window_start, window_end, result
-            )
-            total += window_total
-            matched = matched or window_matched
+            total += await self._collect_window(uid, window_start, window_end, result)
 
         result.total_usdt = total
         if total > 0:
             result.add_amount("USDT", total)
-        if not matched:
-            result.notes.append(
-                "uid-фильтр MEXC не подтверждён — суммировано по совпадению uid в ответе."
-            )
         result.settlement_note = "Сумма `total` (USDT) по записям MEXC за период."
         return result.finalize()
 
     async def _collect_window(
         self, uid: str, window_start: datetime, window_end: datetime, result: CommissionResult
-    ) -> tuple[Decimal, bool]:
+    ) -> Decimal:
         page = 1
         total = Decimal(0)
-        matched = False
         while True:
             params = {
+                "uid": uid,  # VERIFIED (live): server-side filter to this invitee.
                 "startTime": to_millis(window_start),
                 "endTime": to_millis(window_end),
                 "page": page,
@@ -103,16 +94,15 @@ class MexcAdapter(BaseHttpAdapter):
             self._check_envelope(payload)
             rows = self._extract_rows(payload)
             for row in rows:
-                if not self._row_matches_uid(row, uid):
-                    continue
-                matched = True
-                total += parse_decimal(row.get("total", "0"))
+                # Defensive: keep matching even though the server already filters.
+                if self._row_matches_uid(row, uid):
+                    total += parse_decimal(row.get("total", "0"))
             result.raw_records_count += len(rows)
 
             if not rows or page >= self._total_page(payload):
                 break
             page += 1
-        return total, matched
+        return total
 
     @staticmethod
     def _total_page(payload: object) -> int:
