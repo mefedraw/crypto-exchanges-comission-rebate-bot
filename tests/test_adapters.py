@@ -238,6 +238,17 @@ async def test_mexc_sends_uid_param(httpx_mock):
     assert qs["uid"][0] == "43305891"
 
 
+async def test_mexc_shifts_window_to_utc8(httpx_mock):
+    # MEXC buckets by UTC+8 (verified vs cabinet) → query window shifted back 8h.
+    httpx_mock.add_response(json={"code": 0, "data": {"totalPage": 1, "resultList": []}})
+    adapter = MexcAdapter(_creds("mexc"), make_settings())
+    await adapter.get_commission("1", day_start(date(2026, 5, 1)), day_end(date(2026, 5, 1)))
+    await adapter.aclose()
+
+    qs = parse_qs(urlparse(str(httpx_mock.get_requests()[0].url)).query)
+    assert qs["startTime"][0] == "1777564800000"  # 01.05 00:00 UTC+8
+
+
 async def test_bitget_paginates_via_endid_and_ignores_cumulative(httpx_mock):
     # Live shape: records under data.commissionList; paginate via response endId;
     # sum per-record `rebateAmount`, NOT the cumulative totalRebateAmount.

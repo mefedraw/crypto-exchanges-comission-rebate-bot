@@ -26,6 +26,10 @@ _PATH = "/api/v3/rebate/affiliate/commission"
 _PAGE_SIZE = 100  # VERIFIED (live): page/pageSize pagination, response has totalPage.
 # VERIFIED (live): the invitee uid is in the `uid` field. Extra names kept as fallback.
 _UID_FIELDS = ("uid", "inviteUid", "inviteeUid", "subUid")
+# VERIFIED (live, vs cabinet chart): MEXC buckets commission by UTC+8 day (the
+# cabinet's 31.05 daily total matched only a UTC+8-day API query, not UTC). Shift
+# the UTC window back 8h to align with MEXC's days (same as Bitget/KuCoin).
+_UTC8_OFFSET_MS = 8 * 60 * 60 * 1000
 
 
 class MexcAdapter(BaseHttpAdapter):
@@ -81,8 +85,9 @@ class MexcAdapter(BaseHttpAdapter):
         while True:
             params = {
                 "uid": uid,  # VERIFIED (live): server-side filter to this invitee.
-                "startTime": to_millis(window_start),
-                "endTime": to_millis(window_end),
+                # Shift UTC boundaries to UTC+8 days to match MEXC's bucketing.
+                "startTime": to_millis(window_start) - _UTC8_OFFSET_MS,
+                "endTime": to_millis(window_end) - _UTC8_OFFSET_MS,
                 "page": page,
                 "pageSize": _PAGE_SIZE,
                 "timestamp": int(time.time() * 1000),
