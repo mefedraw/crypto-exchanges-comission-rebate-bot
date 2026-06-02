@@ -33,3 +33,7 @@ Thumbs.db
 # ---- Runtime ----
 *.log
 logs/
+
+# ---- Local API dumps / scratch (may contain referral data) ----
+*_sample_response.json
+scratch/

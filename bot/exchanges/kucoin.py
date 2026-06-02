@@ -22,6 +22,10 @@ from bot.utils.money import parse_decimal
 
 _PATH = "/api/v2/affiliate/queryMyCommission"
 _PAGE_SIZE = 100  # VERIFIED (live): page/pageSize pagination, items under data.items.
+# VERIFIED (live): KuCoin buckets rebate periods by UTC+8 day (periodStartTime/
+# periodEndTime are UTC+8 midnight boundaries), so shift UTC day boundaries back
+# 8h to align the query window with KuCoin's days (same as Bitget).
+_UTC8_OFFSET_MS = 8 * 60 * 60 * 1000
 
 
 class KucoinAdapter(BaseHttpAdapter):
@@ -72,8 +76,9 @@ class KucoinAdapter(BaseHttpAdapter):
         while True:
             params = {
                 "userId": uid,
-                "rebateStartAt": to_millis(window_start),
-                "rebateEndAt": to_millis(window_end),
+                # Shift UTC boundaries to UTC+8 days to match KuCoin's bucketing.
+                "rebateStartAt": to_millis(window_start) - _UTC8_OFFSET_MS,
+                "rebateEndAt": to_millis(window_end) - _UTC8_OFFSET_MS,
                 "page": page,
                 "pageSize": _PAGE_SIZE,
             }

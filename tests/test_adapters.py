@@ -91,6 +91,17 @@ async def test_kucoin_parses_items_envelope(httpx_mock):
     assert {line.asset: line.amount for line in result.lines} == {"USDT": Decimal("10")}
 
 
+async def test_kucoin_shifts_window_to_utc8(httpx_mock):
+    # KuCoin buckets rebate periods by UTC+8 → query window shifted back 8h.
+    httpx_mock.add_response(json={"code": "200000", "data": {"items": []}})
+    adapter = KucoinAdapter(_creds("kucoin", passphrase=True), make_settings())
+    await adapter.get_commission("1", day_start(date(2026, 5, 1)), day_end(date(2026, 5, 1)))
+    await adapter.aclose()
+
+    qs = parse_qs(urlparse(str(httpx_mock.get_requests()[0].url)).query)
+    assert qs["rebateStartAt"][0] == "1777564800000"  # 01.05 00:00 UTC+8
+
+
 async def test_bybit_uses_rolling_window_and_warns(httpx_mock):
     httpx_mock.add_response(
         json={"retCode": 0, "result": {"commissions30Day": {"USDT": "12.5"}}}
