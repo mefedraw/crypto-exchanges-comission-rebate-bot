@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from bot.exchanges.base import CommissionResult
-from bot.rendering import DISCLAIMER, render_result, usdt_total
+from bot.rendering import DISCLAIMER, asset_totals, render_result, usdt_total
 
 
 def _result() -> CommissionResult:
@@ -29,7 +29,7 @@ def test_combines_usdt_sources_two_decimals():
     assert "01.05.2026 — 31.05.2026" in out  # DD.MM.YYYY period
 
 
-def test_excludes_non_usdt_coins():
+def test_renders_non_usdt_coins():
     r = _result()
     r.add_amount("USDT", Decimal("10"))
     r.add_amount("MNT", Decimal("1000"))
@@ -37,9 +37,15 @@ def test_excludes_non_usdt_coins():
     r.finalize()
 
     assert usdt_total(r) == Decimal("10")
+    assert asset_totals(r) == {
+        "MNT": Decimal("1000"),
+        "USDC": Decimal("5"),
+        "USDT": Decimal("10"),
+    }
     out = render_result(r)
     assert "10.00 USDT" in out
-    assert "MNT" not in out and "USDC" not in out
+    assert "1000 MNT" in out
+    assert "5 USDC" in out
 
 
 def test_empty_shows_zero_and_hint():

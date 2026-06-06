@@ -25,6 +25,7 @@ class ExchangeSpec:
     code: str
     label: str
     requires_passphrase: bool = False
+    requires_secret: bool = True
 
     @property
     def env_prefix(self) -> str:
@@ -38,6 +39,7 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
     ExchangeSpec("kucoin", "KuCoin", requires_passphrase=True),
     ExchangeSpec("mexc", "MEXC"),
     ExchangeSpec("bitget", "Bitget", requires_passphrase=True),
+    ExchangeSpec("bitmart", "BitMart", requires_secret=False),
     ExchangeSpec("okx", "OKX", requires_passphrase=True),
     ExchangeSpec("bybit", "Bybit"),
     ExchangeSpec("weex", "WEEX", requires_passphrase=True),
@@ -96,6 +98,9 @@ class Settings(BaseSettings):
     bitget_api_key: SecretStr | None = Field(default=None, alias="BITGET_API_KEY")
     bitget_api_secret: SecretStr | None = Field(default=None, alias="BITGET_API_SECRET")
     bitget_api_passphrase: SecretStr | None = Field(default=None, alias="BITGET_API_PASSPHRASE")
+
+    bitmart_api_key: SecretStr | None = Field(default=None, alias="BITMART_API_KEY")
+    bitmart_api_secret: SecretStr | None = Field(default=None, alias="BITMART_API_SECRET")
 
     bybit_api_key: SecretStr | None = Field(default=None, alias="BYBIT_API_KEY")
     bybit_api_secret: SecretStr | None = Field(default=None, alias="BYBIT_API_SECRET")
@@ -158,8 +163,13 @@ class Settings(BaseSettings):
             else None
         )
 
-        if api_key is None or api_secret is None:
+        if api_key is None:
             return None
+        if spec.requires_secret:
+            if api_secret is None:
+                return None
+        else:
+            api_secret = api_secret or SecretStr("")
         if spec.requires_passphrase and passphrase is None:
             return None
 

@@ -15,8 +15,8 @@ Telegram-бот для одного пользователя (владельца
 
 Бот обращается к официальным affiliate/rebate API бирж от имени аккаунта-партнёра (по API-ключам владельца), агрегирует начисления за период и возвращает итог с разбивкой по валютам/типам.
 
-**Поддерживаемые биржи (7):** Bitget, Bybit, WEEX, Gate, OKX, KuCoin, MEXC.
-Toobit и BitMart — НЕ реализуем (у Toobit нет API, у BitMart только broker-rebate, не affiliate).
+**Поддерживаемые биржи (8):** Bitget, BitMart, Bybit, WEEX, Gate, OKX, KuCoin, MEXC.
+Toobit — НЕ реализуем (нет affiliate-API). BitMart поддерживается только через futures affiliate API.
 
 ---
 
@@ -67,6 +67,7 @@ project/
 │   │   ├── base.py             # абстрактный класс ExchangeAdapter + dataclass CommissionResult
 │   │   ├── signing.py          # утилиты HMAC-подписи (общие хелперы)
 │   │   ├── bitget.py
+│   │   ├── bitmart.py
 │   │   ├── bybit.py
 │   │   ├── weex.py
 │   │   ├── gate.py
@@ -147,7 +148,16 @@ class ExchangeAdapter(ABC):
 - **Ответ:** список начислений с суммой rebate и валютой; суммировать по валютам
 - 🔎 проверить вживую имена полей суммы/валюты
 
-### 5.2. Bybit
+### 5.2. BitMart
+- **Эндпоинт для валютного разреза:** `GET /contract/private/affiliate/rebate-list` (KEYED)
+- **Соседний single-user эндпоинт:** `GET /contract/private/affiliate/rebate-user` принимает `cid`, `start_time`, `end_time`, но возвращает `rebate` без поля валюты. Для бота его нельзя использовать как основной источник суммы, иначе потеряем деноминацию.
+- **Док:** https://developer-pro.bitmart.com/en/futuresv2/
+- **Параметры:** `user_id`, `page`, `size`, `currency`, `rebate_start_time`, `rebate_end_time`; валюты futures rebate: `USDT`, `BTC`, `ETH`.
+- **Окно:** максимум 60 дней.
+- **Аутентификация:** `KEYED`, заголовок `X-BM-KEY`.
+- **Ответ:** верхнеуровневые `btc_rebate_sum`, `usdt_rebate_sum`, `eth_rebate_sum` и строки `rebate_detail_page_data` с `rebate_coin`, `trade_user_id`, `total_rebate_amount`; суммировать по валютам через `Decimal`.
+
+### 5.3. Bybit
 - **Эндпоинт (по uid):** `GET /v5/user/aff-customer-info` (param `uid`) — поля `commissions30Day`, `commissions365Day` (разбивка по монетам)
 - **Эндпоинт (список):** `GET /v5/affiliate/aff-user-list` — поля `commissionsVol`, `commissions30Day`, `commissions365Day`
 - **Док:** https://bybit-exchange.github.io/docs/v5/affiliate/affiliate-info и /affiliate-user-list
@@ -159,13 +169,13 @@ class ExchangeAdapter(ABC):
 - **Дисклеймер:** обязательно — API не является источником истины для выплат (см. раздел 2)
 - 🔎 проверить вживую
 
-### 5.3. WEEX
+### 5.4. WEEX
 - **Эндпоинт:** `GET .../rebate/affiliate/getAffiliateCommission` («Get Affiliate Commission»); вспомогательный `getChannelUserTradeAndAsset` (данные по рефералам + комиссия)
 - **Док:** https://www.weex.com/api-doc/spot/rebate-endpoints/GetAffiliateCommission
 - **Аутентификация:** заголовки `ACCESS-KEY`, `ACCESS-SIGN`, `ACCESS-PASSPHRASE`, `ACCESS-TIMESTAMP`
 - 🔎 ОБЯЗАТЕЛЬНО проверить вживую: версию пути (`v1`/`v2`/`v3` — в источниках расходится), параметры (есть ли фильтр по uid и формат дат), имена полей ответа. Это самый «непроверенный» адаптер — заложить запас времени.
 
-### 5.4. Gate (gate.io / gate.com)
+### 5.5. Gate (gate.io / gate.com)
 - **Эндпоинт:** `GET /api/v4/rebate/partner/commission_history` («Partner obtains rebate records of recommended users»)
   - Дополнительно при необходимости: `/api/v4/rebate/agency/commission_history`, `/api/v4/rebate/broker/commission_history`
 - **Док:** https://www.gate.com/docs/developers/apiv4/en/
@@ -176,13 +186,13 @@ class ExchangeAdapter(ABC):
 - Пагинация через `limit`/`offset` — листать до конца.
 - Проверено по доке — самый надёжный адаптер.
 
-### 5.5. OKX
+### 5.6. OKX
 - **Эндпоинт:** `GET /api/v5/affiliate/invitee/detail` (param `uid`) — данные по приглашённому, включая накопленную комиссию
 - **Док:** https://www.okx.com/docs-v5/en/#affiliate-rest-api
 - **Аутентификация:** `OK-ACCESS-KEY`, `OK-ACCESS-SIGN`, `OK-ACCESS-TIMESTAMP`, `OK-ACCESS-PASSPHRASE`; SIGN = base64(HMAC-SHA256(`timestamp + method + requestPath + body`))
 - 🔎 проверить вживую: точное имя поля с суммой комиссии (док JS-рендерится). Проверить, есть ли фильтр по диапазону дат или эндпоинт отдаёт накопленный итог — от этого зависит логика периода. Если диапазона нет — обработать как у Bybit (предупреждение + накопленное значение).
 
-### 5.6. KuCoin
+### 5.7. KuCoin
 - **Эндпоинт:** `GET /api/v2/affiliate/queryMyCommission` («Get Commission»)
 - **Док:** https://www.kucoin.com/docs-new/rest/affiliate/get-commission
 - **Параметры:** `siteType`, `rebateType`, `rebateStartAt`, `rebateEndAt`, `page`, `pageSize`, `userId`, `dataType`
@@ -191,7 +201,7 @@ class ExchangeAdapter(ABC):
 - Пагинация через `page`/`pageSize`.
 - Проверено по доке (включая тело ответа) — надёжный адаптер.
 
-### 5.7. MEXC
+### 5.8. MEXC
 - **Эндпоинт:** `GET /api/v3/rebate/affiliate/commission` («Get Affiliate Commission Record, affiliate only»)
   - Детализация: `/api/v3/rebate/affiliate/commission/detail`; по рефералам: `/api/v3/rebate/affiliate/referral`
 - **Док:** https://www.mexc.com/api-docs/spot-v3/rebate-endpoints
@@ -200,11 +210,12 @@ class ExchangeAdapter(ABC):
 - **Ответ:** поле `total` (string) — сумма комиссии в USDT. Удобно: уже агрегировано в USDT.
 - 🔎 проверить вживую: точный фильтр по uid (через `/referral` или параметр), формат пагинации.
 
-### 5.8. Сводка особенностей (заложить в адаптеры)
+### 5.9. Сводка особенностей (заложить в адаптеры)
 
 | Биржа | Фильтр по uid | Диапазон дат | Окно | Итог сразу в USDT | Надёжность спеки |
 |---|---|---|---|---|---|
 | Bitget | да (`uid`) | да | ≤30 дн | нет (по валютам) | средняя — сверить поля |
+| BitMart | да (`user_id`) | да | ≤60 дн | нет (BTC/USDT/ETH) | высокая по доке |
 | Bybit | да (`uid`) | НЕТ (только 30/365 скольз.) | — | нет | средняя + дисклеймер |
 | WEEX | 🔎 | 🔎 | 🔎 | 🔎 | низкая — проверять всё |
 | Gate | да (`user_id`) | да | ≤30 дн | нет (по валютам) | высокая |
@@ -300,6 +311,8 @@ MASTER_KEY=                      # ключ Fernet для расшифровки
 BITGET_API_KEY=
 BITGET_API_SECRET=
 BITGET_API_PASSPHRASE=
+BITMART_API_KEY=
+BITMART_API_SECRET=              # опционально; текущие KEYED futures affiliate запросы используют X-BM-KEY
 BYBIT_API_KEY=
 BYBIT_API_SECRET=
 WEEX_API_KEY=
@@ -355,7 +368,7 @@ MEXC_API_SECRET=
 2. **Безопасность-ядро:** whitelist middleware, ratelimit middleware, secrets.py (Fernet), логирование с маскированием. Без этого дальше не идём.
 3. **Базовый интерфейс:** base.py (ExchangeAdapter, CommissionResult), signing.py, utils/dates.py, utils/money.py, registry.py.
 4. **FSM и UI:** handlers/flow.py, keyboards.py, start.py, errors.py — со заглушкой адаптера (фейковые данные), чтобы отладить весь UX.
-5. **Адаптеры по надёжности спеки:** сначала **Gate** и **KuCoin** (есть полные ответы в доке) → затем **MEXC**, **Bitget**, **OKX**, **Bybit** (с учётом особенности 30/365) → последним **WEEX** (всё проверять вживую).
+5. **Адаптеры по надёжности спеки:** сначала **Gate** и **KuCoin** (есть полные ответы в доке) → затем **MEXC**, **Bitget**, **BitMart**, **OKX**, **Bybit** (с учётом особенности 30/365) → последним **WEEX** (всё проверять вживую).
    - Для каждого: реализовать, написать юнит-тест подписи и парсинга на фикстуре, отметить 🔎-места, которые подтвердил по живой доке.
 6. **Тесты** (раздел 10).
 7. **README:** инструкция по запуску, чек-лист безопасности ключей (минимальные права, IP-whitelist, запрет withdraw), как подготовить зашифрованные секреты.
@@ -366,7 +379,7 @@ MEXC_API_SECRET=
 ## 12. Definition of Done
 
 - Бот запускается в Docker одной командой, отвечает только whitelisted пользователю.
-- Реализованы все 7 адаптеров; для каждого в коде помечено, что подтверждено по живой доке, а что осталось предположением.
+- Реализованы все 8 адаптеров; для каждого в коде помечено, что подтверждено по живой доке, а что осталось предположением.
 - Денежные суммы считаются через `Decimal`, период автоматически нарезается под лимит биржи.
 - Секреты не попадают в гит/логи; ключи бирж — минимальных прав; есть чек-лист по IP-whitelist.
 - Есть тесты подписи, нарезки дат, суммирования, валидации, whitelist.
@@ -382,4 +395,5 @@ MEXC_API_SECRET=
 - **Bybit:** подтвердить, что произвольный диапазон недоступен; финализировать формулировку предупреждения.
 - **MEXC:** как именно фильтровать по конкретному uid (через `/referral` или параметр), пагинация.
 - **Bitget:** имена полей суммы/валюты, поведение пагинации `idLessThan`.
+- **BitMart:** на живом ключе подтвердить, что `user_id` в `rebate-list` совпадает с вводимым CID/UID пользователя.
 - Для всех: актуальные rate limits, чтобы корректно настроить бэкофф.

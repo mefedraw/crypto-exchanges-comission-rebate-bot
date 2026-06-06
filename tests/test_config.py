@@ -44,6 +44,13 @@ def test_available_exchanges_with_passphrase():
     assert creds.passphrase is not None
 
 
+def test_bitmart_requires_only_api_key():
+    s = make_settings(BITMART_API_KEY="k")
+    creds = s.available_exchanges["bitmart"]
+    assert creds.api_key.get_secret_value() == "k"
+    assert creds.api_secret.get_secret_value() == ""
+
+
 def test_encrypted_credentials_are_decrypted():
     from cryptography.fernet import Fernet
 

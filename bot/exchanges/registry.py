@@ -39,6 +39,7 @@ def _load_adapter_modules() -> None:
     """
     from bot.exchanges import (  # noqa: F401  (imported for registration side effects)
         bitget,
+        bitmart,
         bybit,
         gate,
         kucoin,
