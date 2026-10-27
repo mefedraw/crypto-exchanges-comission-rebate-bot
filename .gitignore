@@ -5,6 +5,7 @@
 *.key
 *.pem
 secrets/
+exchange-keys.env
 
 # ---- Python ----
 __pycache__/
@@ -37,3 +38,18 @@ logs/
 # ---- Local API dumps / scratch (may contain referral data) ----
 *_sample_response.json
 scratch/
+
+# ---- Cabinet exports with real UIDs / commission amounts (NEVER commit) ----
+*.csv
+Commission*.csv
+
+# Host-only deployment overrides and data must never enter the public repository.
+docker-compose.override.yml
+docker-compose.*.override.yml
+*.dump
+*.sqlite
+*.sqlite3
+*.db
+backups/
+GATE_UID_*_AUDIT.md
+*_PRODUCTION_FIX.patch

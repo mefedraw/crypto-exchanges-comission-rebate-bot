@@ -1,0 +1,1166 @@
+# Vietnamese translations for Whales RefBack.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the Whales RefBack project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Whales RefBack VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-10-28 01:00+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: vi\n"
+"Language-Team: vi <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+msgid ""
+"<b>Личный кабинет</b>\n"
+"\n"
+"Управляйте кошельком для выплат, привязанными UID бирж, смотрите статистику и запрашивайте вывод "
+"накопленной комиссии.\n"
+"\n"
+"⚠️ Суммы — начисленные биржами данные, не гарантия к выплате."
+msgstr ""
+"<b>Tài khoản của tôi</b>\n"
+"\n"
+"Quản lý ví nhận tiền và UID sàn, xem thống kê và yêu cầu rút hoa hồng đã tích lũy.\n"
+"\n"
+"⚠️ Số tiền dựa trên dữ liệu ghi nhận của sàn, không phải cam kết thanh toán."
+
+msgid ""
+"Приглашение учтено.\n"
+"\n"
+msgstr ""
+"Đã ghi nhận lời mời.\n"
+"\n"
+
+msgid ""
+"Вы уже зарегистрированы. Приглашение учитывается только при первом запуске бота.\n"
+"\n"
+msgstr ""
+"Bạn đã đăng ký. Lời mời chỉ được tính trong lần đầu khởi động bot.\n"
+"\n"
+
+msgid ""
+"Это ваша ссылка. Самоприглашение не учитывается.\n"
+"\n"
+msgstr ""
+"Đây là liên kết của bạn. Tự mời chính mình không được tính.\n"
+"\n"
+
+msgid ""
+"Пригласительная ссылка недействительна. Личный кабинет доступен.\n"
+"\n"
+msgstr ""
+"Liên kết mời không hợp lệ. Bạn vẫn có thể dùng tài khoản.\n"
+"\n"
+
+msgid ""
+"Отменено.\n"
+"\n"
+msgstr ""
+"Đã hủy.\n"
+"\n"
+
+msgid "💳 Кошелёк"
+msgstr "💳 Ví"
+
+msgid "🆔 UID биржи"
+msgstr "🆔 UID sàn"
+
+msgid "📊 Статистика"
+msgstr "📊 Thống kê"
+
+msgid "🔗 Рефералки"
+msgstr "🔗 Liên kết giới thiệu"
+
+msgid "💸 Вывести USDT"
+msgstr "💸 Rút USDT"
+
+msgid "💸 Вывести MNT"
+msgstr "💸 Rút MNT"
+
+msgid "Техническая поддержка"
+msgstr "Hỗ trợ kỹ thuật"
+
+msgid "Пригласить друга"
+msgstr "Mời bạn bè"
+
+msgid " (в ожидании)"
+msgstr " (đang chờ)"
+
+msgid "⬅️ В меню"
+msgstr "⬅️ Menu"
+
+msgid "⬅️ Рефералки"
+msgstr "⬅️ Liên kết giới thiệu"
+
+msgid "✅ Да, отвязать"
+msgstr "✅ Đồng ý, hủy liên kết"
+
+msgid "⬅️ Отмена"
+msgstr "⬅️ Hủy"
+
+msgid "⬅️ Назад к списку"
+msgstr "⬅️ Về danh sách"
+
+msgid "✅ Подтвердить вывод"
+msgstr "✅ Xác nhận rút tiền"
+
+msgid ""
+"У вас пока нет привязанных UID.\n"
+"Выберите биржу, чтобы добавить:"
+msgstr ""
+"Chưa có UID được liên kết.\n"
+"Chọn sàn để thêm:"
+
+msgid "Ваши UID:\n"
+msgstr "UID của bạn:\n"
+
+msgid ""
+"\n"
+"\n"
+"Выберите биржу, чтобы добавить ещё:"
+msgstr ""
+"\n"
+"\n"
+"Chọn sàn để thêm UID khác:"
+
+#, python-brace-format
+msgid ""
+"🚫 UID <code>{v0}</code> не найден среди ваших рефералов на этой бирже.\n"
+"Проверьте, что это реферал именно вашего аккаунта и на правильной бирже.\n"
+"\n"
+msgstr ""
+"🚫 Không tìm thấy UID <code>{v0}</code> trong danh sách người được bạn giới thiệu trên sàn này.\n"
+"Hãy kiểm tra đúng sàn và quan hệ giới thiệu thuộc tài khoản của bạn.\n"
+"\n"
+
+#, python-brace-format
+msgid ""
+"⚠️ UID <code>{v0}</code> уже занят другим пользователем.\n"
+"\n"
+msgstr ""
+"⚠️ UID <code>{v0}</code> đã liên kết với người dùng khác.\n"
+"\n"
+
+#, python-brace-format
+msgid "✅ Добавлен {v0}: {v1}"
+msgstr "✅ Đã thêm {v0}: {v1}"
+
+#, python-brace-format
+msgid "✅ Добавлен {v0}"
+msgstr "✅ Đã thêm {v0}"
+
+#, python-brace-format
+msgid ""
+"{v0} — реферал подтверждён.\n"
+"\n"
+msgstr ""
+"{v0} — đã xác nhận giới thiệu.\n"
+"\n"
+
+#, python-brace-format
+msgid ""
+"{v0}\n"
+"⚠️ Владение не подтверждено (биржа не даёт это проверить) — в расчёт всё равно попадёт только "
+"реальный рефбек.\n"
+"\n"
+msgstr ""
+"{v0}\n"
+"⚠️ Chưa xác minh quyền sở hữu (sàn không hỗ trợ kiểm tra). Chỉ hoàn phí thực tế được tính toán.\n"
+"\n"
+
+#, python-brace-format
+msgid "Пришлите UID для <b>{v0}</b>:"
+msgstr "Gửi UID cho <b>{v0}</b>:"
+
+msgid "Сессия истекла. Откройте кабинет заново: /start"
+msgstr "Phiên đã hết hạn. Mở lại tài khoản: /start"
+
+msgid "Спор по UID"
+msgstr "Tranh chấp UID"
+
+#, python-brace-format
+msgid ""
+"Пользователь {v0} пытается привязать {v1}:{v2}, уже закреплён за {v3}. Переназначить (админка → 🔀"
+" Переназначить UID): {v4} {v5} <user_id>"
+msgstr ""
+"Người dùng {v0} muốn liên kết {v1}:{v2}, đã thuộc về {v3}. Gán lại (quản trị → 🔀 Gán UID): {v4} "
+"{v5} <user_id>"
+
+#, python-brace-format
+msgid ""
+"Отвязать <b>{v0}</b>?\n"
+"\n"
+"Начисления по нему остановятся. Уже накопленное останется доступным к выводу, и вы сможете "
+"вернуть этот UID позже — просто привязав его заново."
+msgstr ""
+"Hủy liên kết <b>{v0}</b>?\n"
+"\n"
+"Sẽ ngừng tích lũy mới. Tiền đã tích lũy vẫn tuân theo quy tắc rút tiền. Bạn có thể liên kết lại "
+"UID này sau."
+
+msgid ""
+"🗑 UID отвязан. Вернуть можно, привязав его заново.\n"
+"\n"
+msgstr ""
+"🗑 Đã hủy liên kết UID. Có thể liên kết lại sau.\n"
+"\n"
+
+msgid ""
+"UID не найден.\n"
+"\n"
+msgstr ""
+"Không tìm thấy UID.\n"
+"\n"
+
+#, python-brace-format
+msgid ""
+"Текущий кошелёк: <code>{v0}</code>\n"
+"\n"
+msgstr ""
+"Ví hiện tại: <code>{v0}</code>\n"
+"\n"
+
+msgid ""
+"Кошелёк ещё не задан.\n"
+"\n"
+msgstr ""
+"Chưa thiết lập ví.\n"
+"\n"
+
+#, python-brace-format
+msgid "{v0}Пришлите ваш <b>BEP20 (BSC)</b> адрес (0x…). Он заменит текущий."
+msgstr "{v0}Gửi địa chỉ <b>BEP20 (BSC)</b> (0x…) của bạn. Địa chỉ này sẽ thay thế ví hiện tại."
+
+msgid "⚠️ Кошелёк временно недоступен: сервер не настроен (нет MASTER_KEY)."
+msgstr "⚠️ Ví tạm thời không khả dụng: cấu hình máy chủ chưa đủ (thiếu MASTER_KEY)."
+
+#, python-brace-format
+msgid ""
+"⚠️ {v0}\n"
+"Пришлите корректный BEP20-адрес (0x…) или вернитесь в меню."
+msgstr ""
+"⚠️ {v0}\n"
+"Gửi địa chỉ BEP20 hợp lệ (0x…) hoặc quay lại menu."
+
+#, python-brace-format
+msgid "✅ Кошелёк сохранён: <code>{v0}</code>"
+msgstr "✅ Đã lưu ví: <code>{v0}</code>"
+
+msgid "⚠️ Баланс рассчитан по начисленным биржами данным на момент запроса."
+msgstr "⚠️ Số dư dựa trên dữ liệu tích lũy của sàn tại thời điểm yêu cầu."
+
+msgid "доступно сейчас"
+msgstr "có thể dùng ngay"
+
+msgid "ещё не было"
+msgstr "chưa có"
+
+msgid "Доступно к выводу"
+msgstr "Có thể rút"
+
+msgid "Накоплено"
+msgstr "Đã tích lũy"
+
+msgid "⏳ Пока недоступно к выводу — причина при нажатии «💸 Вывести»"
+msgstr "⏳ Chưa thể rút. Nhấn «💸 Rút» để xem lý do."
+
+#, python-brace-format
+msgid "Ближайшая выплата USDT: {v0}"
+msgstr "Lần thanh toán USDT tiếp theo: {v0}"
+
+#, python-brace-format
+msgid "Ближайшая выплата MNT: {v0}"
+msgstr "Lần thanh toán MNT tiếp theo: {v0}"
+
+#, python-brace-format
+msgid "Ближайшая доступная выплата: {v0}"
+msgstr "Lần thanh toán khả dụng tiếp theo: {v0}"
+
+msgid "📊 <b>Статистика</b>"
+msgstr "📊 <b>Thống kê</b>"
+
+#, python-brace-format
+msgid "Ранг: <b>{v0}</b>"
+msgstr "Hạng: <b>{v0}</b>"
+
+#, python-brace-format
+msgid "Последняя выплата: {v0}"
+msgstr "Lần thanh toán cuối: {v0}"
+
+#, python-brace-format
+msgid "Ближайшее сгорание остатка: {v0}"
+msgstr "Số dư hết hạn gần nhất: {v0}"
+
+msgid "Ваши UID:"
+msgstr "UID của bạn:"
+
+#, python-brace-format
+msgid "• {v0}: <code>{v1}</code> — за месяц {v2}"
+msgstr "• {v0}: <code>{v1}</code> — tháng này {v2}"
+
+msgid "UID пока не добавлены — привяжите биржу через «🆔 UID биржи»."
+msgstr "Chưa thêm UID. Liên kết sàn qua «🆔 UID sàn»."
+
+msgid "⚠️ Суммы — начисленные биржами данные, не гарантия к выплате."
+msgstr "⚠️ Số tiền dựa trên dữ liệu ghi nhận của sàn, không phải cam kết thanh toán."
+
+msgid "⏸ Выплаты временно приостановлены администратором."
+msgstr "⏸ Quản trị viên đã tạm dừng thanh toán."
+
+msgid "🚫 Ваш аккаунт заблокирован, обратитесь к администратору."
+msgstr "🚫 Tài khoản của bạn bị chặn. Hãy liên hệ quản trị viên."
+
+msgid "⚠️ Сначала привяжите кошелёк через «💳 Кошелёк»."
+msgstr "⚠️ Trước tiên liên kết ví qua «💳 Ví»."
+
+#, python-brace-format
+msgid "⚠️ Недостаточно начислений для вывода ({v0})."
+msgstr "⚠️ Chưa đủ tích lũy để rút ({v0})."
+
+msgid "⚠️ У вас уже есть заявка на вывод в обработке."
+msgstr "⚠️ Bạn đã có yêu cầu rút đang xử lý."
+
+#, python-brace-format
+msgid "⚠️ Сумма к выводу ниже минимальной ({v0} USDT)."
+msgstr "⚠️ Số tiền rút thấp hơn mức tối thiểu ({v0} USDT)."
+
+msgid "⚠️ Вывод в MNT временно недоступен."
+msgstr "⚠️ Rút MNT tạm thời không khả dụng."
+
+msgid "Последняя выплата: ещё не было"
+msgstr "Lần thanh toán cuối: chưa có"
+
+#, python-brace-format, python-format
+msgid "Последняя выплата: {v0:%Y-%m-%d %H:%M} (UTC+8)"
+msgstr "Lần thanh toán cuối: {v0:%Y-%m-%d %H:%M} (UTC+8)"
+
+#, python-brace-format
+msgid "⚠️ Вывод будет доступен после {v0}."
+msgstr "⚠️ Có thể rút sau {v0}."
+
+msgid "⚠️ Вывод сейчас недоступен."
+msgstr "⚠️ Hiện chưa thể rút tiền."
+
+#, python-brace-format
+msgid ""
+"Заявка на вывод <b>{v0} MNT</b> (≈{v1} USDT) на {v2}.\n"
+"{v3}\n"
+"Подтвердите отправку заявки.\n"
+"⏳ Выплата MNT — после подтверждения администратором.\n"
+"\n"
+"{v4}"
+msgstr ""
+"Yêu cầu rút <b>{v0} MNT</b> (≈{v1} USDT) tới {v2}.\n"
+"{v3}\n"
+"Xác nhận gửi yêu cầu.\n"
+"⏳ Thanh toán MNT cần quản trị viên phê duyệt.\n"
+"\n"
+"{v4}"
+
+#, python-brace-format
+msgid ""
+"Заявка на вывод <b>{v0} USDT</b> на {v1}.\n"
+"{v2}\n"
+"Подтвердите отправку заявки.\n"
+"\n"
+"{v3}"
+msgstr ""
+"Yêu cầu rút <b>{v0} USDT</b> tới {v1}.\n"
+"{v2}\n"
+"Xác nhận gửi yêu cầu.\n"
+"\n"
+"{v3}"
+
+#, python-brace-format
+msgid ""
+"✅ Заявка на вывод {v0} MNT создана.\n"
+"⏳ Выплата MNT — после подтверждения администратором.\n"
+"\n"
+"{v1}"
+msgstr ""
+"✅ Đã tạo yêu cầu rút {v0} MNT.\n"
+"⏳ Thanh toán MNT cần quản trị viên phê duyệt.\n"
+"\n"
+"{v1}"
+
+#, python-brace-format
+msgid ""
+"✅ Заявка на вывод {v0} USDT создана, отправим в ближайшее время.\n"
+"Пришлём уведомление, когда средства дойдут до получателя.\n"
+"\n"
+"{v1}"
+msgstr ""
+"✅ Đã tạo yêu cầu rút {v0} USDT. Chúng tôi sẽ gửi sớm.\n"
+"Bạn sẽ nhận thông báo khi tiền đến người nhận.\n"
+"\n"
+"{v1}"
+
+msgid "⚠️ Срок подтверждения истёк или заявка уже обрабатывается — начните вывод заново"
+msgstr "⚠️ Xác nhận đã hết hạn hoặc yêu cầu đang được xử lý. Hãy bắt đầu rút lại."
+
+msgid ""
+"<b>🔗 Реферальные ссылки</b>\n"
+"\n"
+"Выберите биржу — покажу ссылку и реф-код.\n"
+"Реф-код копируется одним тапом (удобно при регистрации через приложение)."
+msgstr ""
+"<b>🔗 Liên kết giới thiệu</b>\n"
+"\n"
+"Chọn sàn để xem liên kết và mã giới thiệu.\n"
+"Nhấn mã để sao chép khi đăng ký trong ứng dụng."
+
+msgid ""
+"\n"
+"<b>В ожидании</b>"
+msgstr ""
+"\n"
+"<b>Đang chờ</b>"
+
+#, python-brace-format
+msgid ""
+"<b>{v0}</b>{v1}{v2}\n"
+"\n"
+"🔗 Ссылка:\n"
+"{v3}\n"
+"\n"
+"📋 Реф-код (нажмите, чтобы скопировать):\n"
+"<code>{v4}</code>"
+msgstr ""
+"<b>{v0}</b>{v1}{v2}\n"
+"\n"
+"🔗 Liên kết:\n"
+"{v3}\n"
+"\n"
+"📋 Mã giới thiệu (nhấn để sao chép):\n"
+"<code>{v4}</code>"
+
+msgid "Биржа не найдена"
+msgstr "Không tìm thấy sàn"
+
+msgid "Адрес должен быть в формате 0x + 40 hex-символов."
+msgstr "Địa chỉ phải gồm 0x và 40 ký tự thập lục phân."
+
+msgid "Неизвестная биржа."
+msgstr "Sàn không xác định."
+
+msgid "UID: только латиница и цифры, до 64 символов."
+msgstr "UID chỉ gồm chữ Latin và số, tối đa 64 ký tự."
+
+msgid "Поделиться ссылкой"
+msgstr "Chia sẻ liên kết"
+
+msgid "Партнерская программа"
+msgstr "Chương trình đối tác"
+
+msgid "В меню"
+msgstr "Menu"
+
+msgid "Не удалось получить ссылку бота. Пожалуйста, попробуйте позже."
+msgstr "Không thể lấy liên kết bot. Vui lòng thử lại sau."
+
+#, python-brace-format
+msgid ""
+"<b>Пригласить друга</b>\n"
+"\n"
+"Ваша ссылка:\n"
+"<code>{v0}</code>\n"
+"\n"
+"Ваш код: <code>{v1}</code>\n"
+"\n"
+"Приглашено: <b>{v2}</b>\n"
+"Привязали UID: <b>{v3}</b>"
+msgstr ""
+"<b>Mời bạn bè</b>\n"
+"\n"
+"Liên kết của bạn:\n"
+"<code>{v0}</code>\n"
+"\n"
+"Mã của bạn: <code>{v1}</code>\n"
+"\n"
+"Đã mời: <b>{v2}</b>\n"
+"Đã liên kết UID: <b>{v3}</b>"
+
+msgid "Код выдается автоматически. Откройте «Пригласить друга»."
+msgstr "Mã được cấp tự động. Mở «Mời bạn bè»."
+
+msgid "Кейс не найден или кнопка устарела."
+msgstr "Không tìm thấy yêu cầu hoặc nút đã hết hạn."
+
+msgid "Черновик устарел. Откройте кейс заново."
+msgstr "Bản nháp hết hạn. Hãy mở lại yêu cầu."
+
+#, python-brace-format
+msgid ""
+"<b>Создание обращения пока недоступно</b>\n"
+"\n"
+"Для создания обращения нужно накопить не менее <b>100 USDT рефбека</b> за все время по всем вашим"
+" аккаунтам.\n"
+"\n"
+"Сейчас учтено: <b>{v0} USDT</b> до удержаний. Уже выведенные суммы тоже учитываются."
+msgstr ""
+"<b>Chưa thể tạo yêu cầu hỗ trợ</b>\n"
+"\n"
+"Để tạo yêu cầu, cần tích lũy ít nhất <b>100 USDT hoàn phí trọn đời</b> trên tất cả tài khoản của "
+"bạn.\n"
+"\n"
+"Hiện được tính: <b>{v0} USDT</b> trước khấu trừ. Các khoản đã rút cũng được tính."
+
+msgid "Обращения временно недоступны. Пожалуйста, попробуйте позже."
+msgstr "Yêu cầu hỗ trợ tạm thời không khả dụng. Vui lòng thử lại sau."
+
+msgid "У вас нет активных UID. Сначала привяжите аккаунт биржи в личном кабинете."
+msgstr "Bạn không có UID hoạt động. Trước tiên liên kết tài khoản sàn trong trang cá nhân."
+
+msgid ""
+"<b>Новое обращение</b>\n"
+"\n"
+"Выберите биржу:"
+msgstr ""
+"<b>Yêu cầu hỗ trợ mới</b>\n"
+"\n"
+"Chọn sàn:"
+
+msgid "Поддержка:\n"
+msgstr "Hỗ trợ:\n"
+
+msgid "Пользователь:\n"
+msgstr "Người dùng:\n"
+
+#, python-brace-format
+msgid ""
+"Статус: <b>{v0}</b>\n"
+"\n"
+msgstr ""
+"Trạng thái: <b>{v0}</b>\n"
+"\n"
+
+msgid "<b>Техническая поддержка</b>"
+msgstr "<b>Hỗ trợ kỹ thuật</b>"
+
+msgid "Кнопка устарела. Откройте кейс заново."
+msgstr "Nút hết hạn. Hãy mở lại yêu cầu."
+
+msgid "У вас нет активных UID на этой бирже."
+msgstr "Bạn không có UID hoạt động trên sàn này."
+
+msgid "Страница не найдена."
+msgstr "Không tìm thấy trang."
+
+msgid "<b>Выберите UID аккаунта</b>"
+msgstr "<b>Chọn UID tài khoản</b>"
+
+msgid "Выберите UID выбранной биржи."
+msgstr "Chọn UID của sàn đã chọn."
+
+#, python-brace-format
+msgid ""
+"<b>Кейс: {v0}, UID {v1}</b>\n"
+"\n"
+"Опишите ваш вопрос одним текстовым сообщением (до 1200 символов).\n"
+"Не указывайте API-ключи, пароли и seed-фразы."
+msgstr ""
+"<b>Yêu cầu: {v0}, UID {v1}</b>\n"
+"\n"
+"Mô tả câu hỏi trong một tin nhắn văn bản (tối đa 1200 ký tự).\n"
+"Không gửi khóa API, mật khẩu hay cụm từ khôi phục."
+
+msgid "Отправьте исправленный текст сообщения (до 1200 символов)."
+msgstr "Gửi nội dung đã sửa (tối đa 1200 ký tự)."
+
+msgid "Этот черновик уже отправлен или отменен."
+msgstr "Bản nháp này đã được gửi hoặc hủy."
+
+#, python-brace-format
+msgid ""
+"<b>Обращение №{v0}</b>\n"
+"Статус: <b>{v1}</b>\n"
+"\n"
+"Сообщение принято."
+msgstr ""
+"<b>Yêu cầu #{v0}</b>\n"
+"Trạng thái: <b>{v1}</b>\n"
+"\n"
+"Đã nhận tin nhắn."
+
+msgid "Обращения недоступны."
+msgstr "Yêu cầu hỗ trợ không khả dụng."
+
+msgid "Кнопка устарела. Откройте обращения заново."
+msgstr "Nút hết hạn. Hãy mở lại mục yêu cầu hỗ trợ."
+
+msgid ""
+"<b>Обращения</b>\n"
+"\n"
+msgstr ""
+"<b>Yêu cầu hỗ trợ</b>\n"
+"\n"
+
+msgid "Закрытые"
+msgstr "Đã đóng"
+
+msgid "Активные"
+msgstr "Đang mở"
+
+msgid "<b>Мои обращения</b>"
+msgstr "<b>Yêu cầu của tôi</b>"
+
+msgid ""
+"\n"
+"\n"
+"Обращений пока нет."
+msgstr ""
+"\n"
+"\n"
+"Chưa có yêu cầu hỗ trợ."
+
+msgid "Этот кейс уже закрыт."
+msgstr "Yêu cầu này đã đóng."
+
+#, python-brace-format
+msgid ""
+"<b>Кейс №{v0}</b>\n"
+"\n"
+"Отправьте текст сообщения (до 1200 символов)."
+msgstr ""
+"<b>Yêu cầu #{v0}</b>\n"
+"\n"
+"Gửi tin nhắn của bạn (tối đa 1200 ký tự)."
+
+#, python-brace-format
+msgid "Закрыть кейс №{v0}?"
+msgstr "Đóng yêu cầu #{v0}?"
+
+#, python-brace-format
+msgid "<b>История кейса №{v0}</b>"
+msgstr "<b>Lịch sử yêu cầu #{v0}</b>"
+
+msgid "Сообщение недоступно."
+msgstr "Tin nhắn không khả dụng."
+
+msgid ""
+"<b>Предпросмотр обращения для владельца</b>\n"
+"\n"
+msgstr ""
+"<b>Xem trước yêu cầu gửi cho chủ sở hữu</b>\n"
+"\n"
+
+msgid ""
+"<b>Предпросмотр сообщения</b>\n"
+"\n"
+msgstr ""
+"<b>Xem trước tin nhắn</b>\n"
+"\n"
+
+msgid "Создать новое обращение"
+msgstr "Tạo yêu cầu mới"
+
+msgid "Мои обращения"
+msgstr "Yêu cầu của tôi"
+
+msgid "Обращения"
+msgstr "Yêu cầu hỗ trợ"
+
+msgid "В админку"
+msgstr "Bảng quản trị"
+
+msgid "Назад"
+msgstr "Quay lại"
+
+msgid "Далее"
+msgstr "Tiếp"
+
+msgid "Отмена"
+msgstr "Hủy"
+
+msgid "Отправить"
+msgstr "Gửi"
+
+msgid "Изменить текст"
+msgstr "Sửa nội dung"
+
+msgid "Взять в работу"
+msgstr "Tiếp nhận xử lý"
+
+msgid "Ответить"
+msgstr "Trả lời"
+
+msgid "Дополнить"
+msgstr "Bổ sung"
+
+msgid "Закрыть кейс"
+msgstr "Đóng yêu cầu"
+
+msgid "История сообщений"
+msgstr "Lịch sử tin nhắn"
+
+msgid "Открыть кейс"
+msgstr "Mở yêu cầu"
+
+msgid "Поддержка"
+msgstr "Hỗ trợ"
+
+msgid "Пользователь"
+msgstr "Người dùng"
+
+msgid "Новее"
+msgstr "Mới hơn"
+
+msgid "Ранее"
+msgstr "Cũ hơn"
+
+msgid "К кейсу"
+msgstr "Về yêu cầu"
+
+#, python-brace-format
+msgid "Обращение №{v0}"
+msgstr "Yêu cầu #{v0}"
+
+msgid "Новое обращение"
+msgstr "Yêu cầu mới"
+
+#, python-brace-format
+msgid ""
+"<b>{v0}</b>\n"
+"Биржа: {v1}\n"
+"UID: <code>{v2}</code>\n"
+"Пользователь: {v3}\n"
+"Telegram ID: <code>{v4}</code>\n"
+"\n"
+"{v5}"
+msgstr ""
+"<b>{v0}</b>\n"
+"Sàn: {v1}\n"
+"UID: <code>{v2}</code>\n"
+"Người dùng: {v3}\n"
+"Telegram ID: <code>{v4}</code>\n"
+"\n"
+"{v5}"
+
+msgid "Ответ поддержки"
+msgstr "Trả lời từ hỗ trợ"
+
+msgid "Дополнение пользователя"
+msgstr "Bổ sung từ người dùng"
+
+#, python-brace-format
+msgid ""
+"<b>Обращение №{v0}: {v1}</b>\n"
+"\n"
+"{v2}"
+msgstr ""
+"<b>Yêu cầu #{v0}: {v1}</b>\n"
+"\n"
+"{v2}"
+
+#, python-brace-format
+msgid "Пожалуйста, отправьте текст от 1 до {v0} символов."
+msgstr "Vui lòng gửi từ 1 đến {v0} ký tự."
+
+msgid "Этот UID больше не привязан к вашему аккаунту. Выберите другой."
+msgstr "UID này không còn liên kết với tài khoản của bạn. Chọn UID khác."
+
+msgid "Кейс не найден или недоступен."
+msgstr "Không tìm thấy yêu cầu hoặc không có quyền truy cập."
+
+msgid "Взять обращение в работу может только администратор."
+msgstr "Chỉ quản trị viên có thể tiếp nhận yêu cầu."
+
+msgid ""
+"За последние 24 часа вы уже создали 2 обращения. Пожалуйста, попробуйте позже или дополните "
+"существующее в разделе «Мои обращения»."
+msgstr ""
+"Bạn đã tạo 2 yêu cầu trong 24 giờ qua. Hãy thử lại sau hoặc bổ sung vào yêu cầu hiện có trong "
+"«Yêu cầu của tôi»."
+
+msgid ""
+"У вас уже 3 открытых обращения. Пожалуйста, дополните существующее в разделе «Мои обращения» или "
+"дождитесь его решения."
+msgstr ""
+"Bạn đã có 3 yêu cầu đang mở. Hãy bổ sung vào yêu cầu hiện có trong «Yêu cầu của tôi» hoặc chờ "
+"giải quyết."
+
+msgid "Обращения для этого аккаунта недоступны."
+msgstr "Tài khoản này không thể tạo yêu cầu hỗ trợ."
+
+msgid "Для открытия кейса нужно накопить не менее 100 USDT рефбека за все время."
+msgstr "Cần ít nhất 100 USDT hoàn phí trọn đời để mở yêu cầu."
+
+#, python-brace-format
+msgid "По этому UID уже открыт кейс №{v0}. Дополните его в разделе «Мои обращения»."
+msgstr "UID này đã có yêu cầu #{v0}. Bổ sung trong «Yêu cầu của tôi»."
+
+msgid "Пожалуйста, подождите минуту перед следующим сообщением в кейсе."
+msgstr "Vui lòng đợi một phút trước khi gửi tin nhắn tiếp theo trong yêu cầu."
+
+#, python-brace-format
+msgid ""
+"<b>Обращение №{v0}: кейс закрыт.</b>\n"
+"\n"
+"Откройте кейс и ознакомьтесь с перепиской."
+msgstr ""
+"<b>Yêu cầu #{v0} đã đóng.</b>\n"
+"\n"
+"Mở yêu cầu để đọc cuộc trao đổi."
+
+#, python-brace-format
+msgid ""
+"<b>По обращению №{v0} требуется ваш ответ.</b>\n"
+"\n"
+"Откройте кейс и ознакомьтесь с сообщением поддержки."
+msgstr ""
+"<b>Yêu cầu #{v0} cần bạn trả lời.</b>\n"
+"\n"
+"Mở yêu cầu để đọc tin nhắn hỗ trợ."
+
+msgid "Условия рангов"
+msgstr "Điều kiện hạng"
+
+msgid "История ранга"
+msgstr "Lịch sử hạng"
+
+msgid "Вывести партнерские USDT"
+msgstr "Rút USDT đối tác"
+
+msgid "Вывести партнерские MNT"
+msgstr "Rút MNT đối tác"
+
+#, python-brace-format
+msgid ""
+"<b>Партнерская программа</b>\n"
+"\n"
+"Ранг: <b>{v0}</b>\n"
+"Доля дохода владельца: <b>{v1:.0f}%</b>\n"
+"\n"
+msgstr ""
+"<b>Chương trình đối tác</b>\n"
+"\n"
+"Hạng: <b>{v0}</b>\n"
+"Tỷ lệ chia sẻ thu nhập chủ sở hữu: <b>{v1:.0f}%</b>\n"
+"\n"
+
+#, python-brace-format
+msgid ""
+"Активны в {v0:%m.%Y}: <b>{v1}/{v2} ({v3}%)</b>\n"
+"Подтвержденная ступень: <b>{v4}</b>\n"
+msgstr ""
+"Hoạt động trong {v0:%m.%Y}: <b>{v1}/{v2} ({v3}%)</b>\n"
+"Bậc đủ điều kiện: <b>{v4}</b>\n"
+
+#, python-brace-format, python-format
+msgid "Защита до <b>{v0:%d.%m.%Y %H:%M}</b> (UTC+8)\n"
+msgstr "Bảo vệ đến <b>{v0:%d.%m.%Y %H:%M}</b> (UTC+8)\n"
+
+#, python-brace-format
+msgid "Проверка за {v0}: ожидаются данные бирж.\n"
+msgstr "Đánh giá kỳ {v0}: đang chờ dữ liệu sàn.\n"
+
+msgid ""
+"\n"
+"<b>Пожизненный рефбек активных рефералов</b>\n"
+msgstr ""
+"\n"
+"<b>Hoàn phí trọn đời của người được giới thiệu đang hoạt động</b>\n"
+
+msgid "<b>Прямые рефералы по рефбеку за все время</b>\n"
+msgstr "<b>Người được giới thiệu trực tiếp theo hoàn phí trọn đời</b>\n"
+
+#, python-brace-format
+msgid "От {v0} USDT: <b>{v1}</b>"
+msgstr "Từ {v0} USDT: <b>{v1}</b>"
+
+#, python-brace-format
+msgid ""
+"\n"
+"\n"
+"Доступно: <b>{v0} USDT</b>\n"
+"В выплатах: {v1} USDT\n"
+"Выплачено: {v2} USDT"
+msgstr ""
+"\n"
+"\n"
+"Khả dụng: <b>{v0} USDT</b>\n"
+"Đang thanh toán: {v1} USDT\n"
+"Đã trả: {v2} USDT"
+
+#, python-brace-format
+msgid ""
+"\n"
+"\n"
+"Доступно: <b>{v0} MNT</b> (~{v1} USDT)\n"
+"В выплатах MNT: ~{v2} USDT\n"
+"Выплачено MNT: ~{v3} USDT"
+msgstr ""
+"\n"
+"\n"
+"Khả dụng: <b>{v0} MNT</b> (~{v1} USDT)\n"
+"Đang thanh toán MNT: ~{v2} USDT\n"
+"MNT đã trả: ~{v3} USDT"
+
+#, python-brace-format, python-format
+msgid ""
+"\n"
+"\n"
+"Начало учета новых доходов: {v0:%d.%m.%Y} (UTC+8)."
+msgstr ""
+"\n"
+"\n"
+"Bắt đầu tính thu nhập mới: {v0:%d.%m.%Y} (UTC+8)."
+
+msgid "Выплаты временно приостановлены администратором."
+msgstr "Quản trị viên đã tạm dừng thanh toán."
+
+msgid "Вывод для этого аккаунта недоступен. Обратитесь в поддержку."
+msgstr "Tài khoản này chưa thể rút. Liên hệ hỗ trợ."
+
+msgid "У вас уже есть выплата в этой валюте в обработке."
+msgstr "Bạn đã có khoản thanh toán đang xử lý bằng tài sản này."
+
+msgid "Сначала привяжите кошелек в личном кабинете."
+msgstr "Trước tiên liên kết ví trong tài khoản."
+
+msgid "Минимальная сумма партнерского вывода: 10 USDT или эквивалент в MNT."
+msgstr "Rút đối tác tối thiểu: 10 USDT hoặc giá trị tương đương bằng MNT."
+
+msgid "Вывод MNT временно недоступен."
+msgstr "Rút MNT tạm thời không khả dụng."
+
+msgid "Вывод сейчас недоступен."
+msgstr "Hiện chưa thể rút tiền."
+
+msgid "<b>История партнерского ранга</b>"
+msgstr "<b>Lịch sử hạng đối tác</b>"
+
+msgid ""
+"\n"
+"\n"
+"Месячных проверок пока нет."
+msgstr ""
+"\n"
+"\n"
+"Chưa có đánh giá hàng tháng."
+
+msgid "ожидаются данные бирж"
+msgstr "đang chờ dữ liệu sàn"
+
+msgid "защита ранга"
+msgstr "bảo vệ hạng"
+
+#, python-brace-format
+msgid ""
+"\n"
+"\n"
+"<b>{v0:%m.%Y}</b>: {v1}\n"
+"Активны: {v2}/{v3}. Ступень: {v4}."
+msgstr ""
+"\n"
+"\n"
+"<b>{v0:%m.%Y}</b>: {v1}\n"
+"Hoạt động: {v2}/{v3}. Bậc: {v4}."
+
+msgid " или "
+msgstr " hoặc "
+
+#, python-brace-format
+msgid "{v0} с рефбеком {v1}+ USDT"
+msgstr "{v0} người có hoàn phí {v1}+ USDT"
+
+msgid ""
+"<b>Партнерские ранги</b>\n"
+"\n"
+msgstr ""
+"<b>Hạng đối tác</b>\n"
+"\n"
+
+msgid ""
+"\n"
+"\n"
+"До первого ранга: 0%. Чек: подтвержденный рефбек до удержаний по всем UID приглашенного за все "
+"время.\n"
+"Вознаграждение финансируется из сбора владельца, рефбек приглашенного не уменьшается. Прошлые "
+"доходы не пересчитываются."
+msgstr ""
+"\n"
+"\n"
+"Trước hạng đầu: 0%. Mức xét hạng là hoàn phí trọn đời đã xác nhận trước khấu trừ trên mọi UID của"
+" người được mời.\n"
+"Thưởng lấy từ phí của chủ sở hữu, không giảm hoàn phí của người được mời. Thu nhập cũ không được "
+"tính lại."
+
+msgid ""
+"\n"
+"\n"
+"Активный реферал: от 10 USDT gross за календарный месяц по всем UID. В ступени входят только "
+"активные рефералы; их чеки остаются пожизненными.\n"
+"Повышение: сразу, с защитой на три календарных месяца. После защиты неподтвержденный ранг "
+"снижается на один уровень за закрытый месяц.\n"
+"Доля активности 30% не понижает закрытую ступень и не сохраняет незакрытую. Ошибки API не "
+"считаются неактивностью."
+msgstr ""
+"\n"
+"\n"
+"Người được giới thiệu hoạt động: ít nhất 10 USDT hoàn phí gộp mỗi tháng dương lịch trên mọi UID. "
+"Chỉ người hoạt động được tính vào điều kiện hạng; mức hoàn phí xét hạng vẫn là tổng trọn đời.\n"
+"Thăng hạng ngay, được bảo vệ ba tháng dương lịch. Sau đó hạng chưa đủ điều kiện giảm một bậc mỗi "
+"tháng đã kết thúc.\n"
+"Tỷ lệ hoạt động 30% không hạ hạng đã đủ điều kiện và không giữ hạng chưa đủ điều kiện. Lỗi API "
+"không bị tính là không hoạt động."
+
+msgid "Подтвердить вывод"
+msgstr "Xác nhận rút tiền"
+
+#, python-brace-format
+msgid ""
+"<b>Вывод партнерского дохода</b>\n"
+"\n"
+"Сумма: <b>{v0} {v1}</b>\n"
+"Кошелек: {v2}\n"
+msgstr ""
+"<b>Rút thu nhập đối tác</b>\n"
+"\n"
+"Số tiền: <b>{v0} {v1}</b>\n"
+"Ví: {v2}\n"
+
+msgid "Сеть: Mantle. Выплата после подтверждения администратором."
+msgstr "Mạng: Mantle. Thanh toán cần quản trị viên phê duyệt."
+
+msgid "Сеть: BEP20. Сетевая комиссия будет удержана при отправке."
+msgstr "Mạng: BEP20. Phí mạng sẽ được khấu trừ khi gửi."
+
+msgid "Кнопка устарела. Начните вывод заново."
+msgstr "Nút hết hạn. Hãy bắt đầu rút lại."
+
+msgid "Подтверждение устарело или баланс изменился. Начните вывод заново."
+msgstr "Xác nhận hết hạn hoặc số dư đã thay đổi. Hãy bắt đầu rút lại."
+
+#, python-brace-format
+msgid "Партнерская выплата №{v0} создана: {v1} {v2}."
+msgstr "Đã tạo thanh toán đối tác #{v0}: {v1} {v2}."
+
+msgid ""
+"\n"
+"Ожидает подтверждения администратором."
+msgstr ""
+"\n"
+"Đang chờ quản trị viên phê duyệt."
+
+msgid "Кнопка устарела."
+msgstr "Nút hết hạn."
+
+msgid "Партнерский ранг изменен."
+msgstr "Hạng đối tác đã thay đổi."
+
+#, python-brace-format
+msgid ""
+"<b>Партнерский ранг изменен</b>\n"
+"\n"
+"Ранг: {v0} → <b>{v1}</b>\n"
+"Доля нового дохода владельца: <b>{v2:.0f}%</b>\n"
+"Ранее начисленные суммы не изменились."
+msgstr ""
+"<b>Hạng đối tác đã thay đổi</b>\n"
+"\n"
+"Hạng: {v0} → <b>{v1}</b>\n"
+"Tỷ lệ chia sẻ thu nhập mới của chủ sở hữu: <b>{v2:.0f}%</b>\n"
+"Các khoản đã tích lũy không đổi."
+
+#, python-brace-format
+msgid ""
+"✅ Средства дошли до получателя!\n"
+"Отправлено <b>{v0} {v1}</b>."
+msgstr ""
+"✅ Người nhận đã nhận tiền!\n"
+"Đã gửi <b>{v0} {v1}</b>."
+
+#, python-brace-format
+msgid ""
+"\n"
+"(газ сети {v0} USDT удержан)"
+msgstr ""
+"\n"
+"(đã khấu trừ {v0} USDT phí gas mạng)"
+
+#, python-brace-format
+msgid ""
+"⚠️ Не удалось отправить выплату <b>{v0} {v1}</b>. Средства не списаны — начисления возвращены на "
+"баланс, попробуйте позже."
+msgstr ""
+"⚠️ Không thể gửi khoản thanh toán <b>{v0} {v1}</b>. Không bị trừ tiền; khoản tích lũy đã được trả"
+" về số dư. Hãy thử lại sau."
+
+#, python-brace-format
+msgid "Манки {v0}"
+msgstr "Monkey {v0}"
+
+msgid "Что-то пошло не так. Попробуйте /start и повторите."
+msgstr "Đã xảy ra lỗi. Thử /start rồi thực hiện lại."
+
+msgid "Необработанная ошибка"
+msgstr "Lỗi chưa xử lý"
+
+msgid "Слишком часто — подождите немного."
+msgstr "Yêu cầu quá nhanh. Vui lòng đợi một chút."
+
+msgid "🚫 Ваш аккаунт заблокирован. Обратитесь к администратору."
+msgstr "🚫 Tài khoản của bạn bị chặn. Hãy liên hệ quản trị viên."
+
+#, python-brace-format
+msgid "UID должен быть длиной от {v0} до {v1} символов."
+msgstr "UID phải dài từ {v0} đến {v1} ký tự."
+
+msgid "UID может содержать только латинские буквы и цифры."
+msgstr "UID chỉ được chứa chữ Latin và số."
+
+msgid "Отправлено"
+msgstr "Đã gửi"
+
+msgid "Открыт кейс"
+msgstr "Đã mở yêu cầu"
+
+msgid "Требуется ответ"
+msgstr "Cần trả lời"
+
+msgid "Кейс закрыт"
+msgstr "Đã đóng yêu cầu"
+
+msgid "20% · для китов индивидуальные условия"
+msgstr "20% · điều kiện riêng cho người dùng khối lượng lớn"
+
+msgid "бонус 12% для команды каждую неделю + 3% к поинтам на TGE"
+msgstr "thưởng nhóm 12% mỗi tuần + thưởng điểm 3% tại TGE"
+
+msgid "7% · для китов индивидуальные условия"
+msgstr "7% · điều kiện riêng cho người dùng khối lượng lớn"
+
+msgid "Не удалось создать ссылку. Пожалуйста, попробуйте позже."
+msgstr "Không thể tạo liên kết. Hãy thử lại sau."
+
+msgid "Сначала откройте личный кабинет через /start."
+msgstr "Trước tiên mở tài khoản bằng /start."
+
+msgid "Реферальная программа для этого аккаунта недоступна."
+msgstr "Chương trình giới thiệu không khả dụng cho tài khoản này."
+
+msgid "Выберите язык / Choose language"
+msgstr "Chọn ngôn ngữ / Choose language"
+
+msgid "Язык сохранен."
+msgstr "Đã lưu ngôn ngữ."
+
+msgid "Язык / Language"
+msgstr "Ngôn ngữ / Language"
+
+msgid "Код должен содержать от 5 до 32 латинских букв, цифр, символов _ или -."
+msgstr "Mã cần có 5–32 chữ Latin, chữ số, _ hoặc -."
+
+msgid "Этот код зарезервирован. Пожалуйста, выберите другой."
+msgstr "Mã này được dành riêng. Vui lòng chọn mã khác."
+

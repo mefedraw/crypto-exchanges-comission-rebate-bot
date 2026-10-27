@@ -10,12 +10,12 @@ The `uid` query param filters server-side to a single invitee (verified live).
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from urllib.parse import urlencode
 
 from bot.config import ExchangeCredentials, Settings
-from bot.exchanges.base import CommissionResult, ExchangeApiError
+from bot.exchanges.base import CommissionResult, ExchangeApiError, ReferralCheck
 from bot.exchanges.base_http import BaseHttpAdapter
 from bot.exchanges.registry import register
 from bot.exchanges.signing import hmac_hex
@@ -23,6 +23,13 @@ from bot.utils.dates import iter_windows, to_millis
 from bot.utils.money import parse_decimal
 
 _PATH = "/api/v3/rebate/affiliate/commission"
+# VERIFIED (live): the affiliate's referral list, uid-filterable. A uid that is NOT
+# the affiliate's referral returns business code 1035 (success:false, data:null),
+# regardless of the date window — an authoritative negative — so verify_referral
+# hard-rejects on 1035.
+_REFERRAL_PATH = "/api/v3/rebate/affiliate/referral"
+_REFERRAL_WINDOW_DAYS = 30
+_NOT_REFERRAL_CODE = "1035"  # VERIFIED (live): uid not in the affiliate's network.
 _PAGE_SIZE = 100  # VERIFIED (live): page/pageSize pagination, response has totalPage.
 # VERIFIED (live): the invitee uid is in the `uid` field. Extra names kept as fallback.
 _UID_FIELDS = ("uid", "inviteUid", "inviteeUid", "subUid")
@@ -93,9 +100,7 @@ class MexcAdapter(BaseHttpAdapter):
                 "timestamp": int(time.time() * 1000),
             }
             request_path = f"{_PATH}?{self._signed_query(params)}"
-            payload = await self._send(
-                "GET", request_path, headers=self._headers(), log_path=_PATH
-            )
+            payload = await self._send("GET", request_path, headers=self._headers(), log_path=_PATH)
             self._check_envelope(payload)
             rows = self._extract_rows(payload)
             for row in rows:
@@ -108,6 +113,76 @@ class MexcAdapter(BaseHttpAdapter):
                 break
             page += 1
         return total
+
+    async def get_downline_total(self, date_from: datetime, date_to: datetime) -> Decimal | None:
+        """Whole-downline USDT rebate: same commission endpoint WITHOUT the `uid`
+        filter, so MEXC returns every invitee's rows (VERIFIED live: `uid` is an
+        optional query param — omitting it is not documented explicitly, but the
+        endpoint does not 400/1035 without it and returns rows for all invitees).
+
+        CRITICAL: queried in ONE request spanning the whole period, never sliced into
+        sub-windows — MEXC's per-row `total` is NOT additive across sub-periods (see
+        the max_window_days note above: 3x30d windows over-counted vs one 90d call).
+        max_window_days is already 365 and callers cap periods at 365 days, so a
+        single request always covers the whole range; still, this method takes
+        date_from/date_to as-is (no iter_windows) so it can never accidentally slice."""
+        self._log.info("get_downline_total", date_from=str(date_from), date_to=str(date_to))
+        total = Decimal(0)
+        page = 1
+        while True:
+            params: dict[str, object] = {
+                # No `uid` here (unlike get_commission): every invitee's rows come back.
+                "startTime": to_millis(date_from) - _UTC8_OFFSET_MS,
+                "endTime": to_millis(date_to) - _UTC8_OFFSET_MS,
+                "page": page,
+                "pageSize": _PAGE_SIZE,
+                "timestamp": int(time.time() * 1000),
+            }
+            request_path = f"{_PATH}?{self._signed_query(params)}"
+            payload = await self._send("GET", request_path, headers=self._headers(), log_path=_PATH)
+            self._check_envelope(payload)
+            rows = self._extract_rows(payload)
+            for row in rows:
+                # VERIFIED (live): `total` is the per-invitee USDT commission field,
+                # same as get_commission uses per-uid.
+                total += parse_decimal(row.get("total", "0"))
+
+            if not rows or page >= self._total_page(payload):
+                break
+            page += 1
+        return total
+
+    async def verify_referral(self, uid: str) -> ReferralCheck:
+        """Ask MEXC (uid-filtered) whether ``uid`` is the affiliate's referral.
+
+        VERIFIED (live), all HTTP 200: code 0 / success -> CONFIRMED; code 1035
+        (success:false, data:null) -> NOT_REFERRAL (authoritative "not your
+        referral", amount-independent — a non-referral uid gets 1035 regardless of
+        window); anything else -> UNVERIFIABLE (fail open). Classifies the code
+        directly (``_check_envelope`` would raise on 1035 and bury it).
+        """
+        end = datetime.now(UTC)
+        begin = end - timedelta(days=_REFERRAL_WINDOW_DAYS - 1)
+        params: dict[str, object] = {
+            "uid": uid,
+            "startTime": to_millis(begin),
+            "endTime": to_millis(end),
+            "page": 1,
+            "pageSize": _PAGE_SIZE,
+            "timestamp": int(time.time() * 1000),
+        }
+        request_path = f"{_REFERRAL_PATH}?{self._signed_query(params)}"
+        payload = await self._send(
+            "GET", request_path, headers=self._headers(), log_path=_REFERRAL_PATH
+        )
+        if not isinstance(payload, dict):
+            return ReferralCheck.UNVERIFIABLE
+        code = str(payload.get("code"))
+        if code == _NOT_REFERRAL_CODE:
+            return ReferralCheck.NOT_REFERRAL
+        if code in ("0", "200"):
+            return ReferralCheck.CONFIRMED  # a non-referral uid would have returned 1035
+        return ReferralCheck.UNVERIFIABLE
 
     @staticmethod
     def _total_page(payload: object) -> int:
@@ -123,7 +198,11 @@ class MexcAdapter(BaseHttpAdapter):
 
     def _check_envelope(self, payload: object) -> None:
         # MEXC error envelope: {"code": <non-200>, "msg": "..."}.
-        if isinstance(payload, dict) and "code" in payload and str(payload["code"]) not in ("200", "0"):
+        if (
+            isinstance(payload, dict)
+            and "code" in payload
+            and str(payload["code"]) not in ("200", "0")
+        ):
             raise ExchangeApiError(f"{self.name}: {payload.get('code')} {payload.get('msg')}")
 
     @staticmethod

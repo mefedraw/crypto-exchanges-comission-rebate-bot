@@ -10,6 +10,8 @@ from aiogram import Router
 from aiogram.types import CallbackQuery, ErrorEvent, Message
 
 from bot.alerts import Alerter
+from bot.i18n import gettext as tr
+from bot.i18n import recent_locale, use_locale
 from bot.logging import get_logger
 
 logger = get_logger(__name__)
@@ -36,12 +38,15 @@ async def handle_error(event: ErrorEvent, alerter: Alerter) -> bool:
     )
 
     update_event = event.update.event
+    user = getattr(update_event, "from_user", None)
+    locale = recent_locale(user.id, getattr(user, "language_code", None)) if user else "ru"
     try:
-        if isinstance(update_event, CallbackQuery):
-            await update_event.answer(_USER_MESSAGE, show_alert=True)
-        elif isinstance(update_event, Message):
-            await update_event.answer(_USER_MESSAGE)
-    except Exception:  # noqa: BLE001 - best-effort notification; never re-raise
+        with use_locale(locale):
+            if isinstance(update_event, CallbackQuery):
+                await update_event.answer(tr(_USER_MESSAGE), show_alert=True)
+            elif isinstance(update_event, Message):
+                await update_event.answer(tr(_USER_MESSAGE))
+    except Exception:
         logger.warning("failed to notify user about error")
 
     return True  # mark as handled

@@ -11,14 +11,17 @@ fields are running cumulatives and are intentionally not summed.
 
 from __future__ import annotations
 
+import json
 import time
+from collections.abc import AsyncIterator
 from datetime import datetime
+from decimal import Decimal
 from urllib.parse import urlencode
 
 import httpx
 
 from bot.config import ExchangeCredentials, Settings
-from bot.exchanges.base import CommissionResult, ExchangeApiError, ExchangeAuthError
+from bot.exchanges.base import CommissionResult, ExchangeApiError, ExchangeAuthError, ReferralCheck
 from bot.exchanges.base_http import BaseHttpAdapter
 from bot.exchanges.registry import register
 from bot.exchanges.signing import hmac_base64
@@ -26,6 +29,9 @@ from bot.utils.dates import iter_windows, to_millis
 from bot.utils.money import parse_decimal
 
 _PATH = "/api/v2/broker/customer-commissions"
+# VERIFIED (official Bitget affiliate docs): the broker's customer list, uid-filterable,
+# returned independent of rebate — the membership check. POST with a JSON body.
+_CUSTOMER_LIST_PATH = "/api/v2/broker/customer-list"
 _PAGE_LIMIT = 100
 # VERIFIED (live + docs): Bitget buckets the `date` field by UTC+8 day, and the
 # partner cabinet filters by UTC+8 calendar dates. We receive UTC day boundaries,
@@ -48,11 +54,12 @@ class BitgetAdapter(BaseHttpAdapter):
     supports_uid_filter = True
     supports_date_range = True
 
-    def _headers(self, method: str, request_path: str) -> dict[str, str]:
+    def _headers(self, method: str, request_path: str, body: str = "") -> dict[str, str]:
         """Bitget signing: SIGN = base64(hmac_sha256(ts + method + requestPath + body))."""
-        # VERIFIED: signature scheme per Bitget API auth docs.
+        # VERIFIED: signature scheme per Bitget API auth docs. GET has no body; POST
+        # signs the exact JSON string we also send verbatim as the request content.
         timestamp = str(int(time.time() * 1000))
-        payload = f"{timestamp}{method.upper()}{request_path}"
+        payload = f"{timestamp}{method.upper()}{request_path}{body}"
         sign = hmac_base64(self._creds.api_secret.get_secret_value(), payload)
         passphrase = self._creds.passphrase.get_secret_value() if self._creds.passphrase else ""
         return {
@@ -112,6 +119,96 @@ class BitgetAdapter(BaseHttpAdapter):
             if len(records) < _PAGE_LIMIT or not end_id or str(end_id) == id_less_than:
                 break
             id_less_than = str(end_id)
+
+    async def get_downline_total(self, date_from: datetime, date_to: datetime) -> Decimal | None:
+        """Whole-downline USDT rebate across every customer under this broker key.
+
+        Unlike Gate/MEXC/BitMart (VERIFIED: those commission endpoints return every
+        referral's rows when the uid filter is omitted), Bitget's own docs mark
+        `uid` on ``customer-commissions`` as "Required: No" but never state what an
+        omitted uid actually returns — that shortcut is UNCONFIRMED for Bitget, so
+        we do NOT take it here (ASSUMED-uncertain, deliberately unused).
+
+        Instead: list-then-sum. Enumerate the full customer roster via
+        ``/api/v2/broker/customer-list`` (the same endpoint :meth:`verify_referral`
+        already calls) with NO uid filter, then reuse the exact per-uid
+        :meth:`_collect_window` pagination :meth:`get_commission` uses, summing only
+        the USDT lines. Honours ``max_window_days``/pagination for every customer.
+
+        # ASSUMED: Bitget's docs say customer-list's startTime/endTime span must be
+        # <=30 days when supplied, but say nothing about the default when they are
+        # omitted entirely. verify_referral already omits them and (VERIFIED live)
+        # finds a matching customer regardless of registerTime, i.e. an unfiltered
+        # call already searches the whole roster rather than defaulting to
+        # "yesterday only" — we rely on that same observed behaviour here to page
+        # through EVERY customer, not just ones who registered inside the query
+        # window (a customer who joined long before date_from can still have
+        # earned commission inside it).
+        """
+        self._log.info("get_downline_total", date_from=str(date_from), date_to=str(date_to))
+        total = Decimal(0)
+        async for uid in self._iter_all_customer_uids():
+            temp = self._new_result(uid, date_from, date_to)
+            for window_start, window_end in iter_windows(
+                date_from.date(), date_to.date(), self.max_window_days
+            ):
+                await self._collect_window(uid, window_start, window_end, temp)
+            for line in temp.finalize().lines:
+                if line.asset == "USDT":
+                    total += line.amount
+        return total
+
+    async def _iter_all_customer_uids(self) -> AsyncIterator[str]:
+        """Page through the broker's entire customer roster (all uids, all time).
+
+        POSTs ``customer-list`` with no uid/time filter, paginating via
+        ``pageNo``/``pageSize`` (VERIFIED docs: that endpoint's own pagination
+        fields — it has no ``idLessThan``/``endId`` cursor like customer-commissions,
+        response ``data`` is a flat array of ``{uid, registerTime}``). Stops on a
+        short/empty page.
+        """
+        page_no = 1
+        while True:
+            body = json.dumps(
+                {"pageNo": str(page_no), "pageSize": str(_PAGE_LIMIT)}, separators=(",", ":")
+            )
+            payload = await self._send(
+                "POST",
+                _CUSTOMER_LIST_PATH,
+                headers=self._headers("POST", _CUSTOMER_LIST_PATH, body),
+                log_path=_CUSTOMER_LIST_PATH,
+                content=body,
+            )
+            records, _ = self._extract_page(payload)
+            for record in records:
+                uid = record.get("uid")
+                if uid is not None and str(uid):
+                    yield str(uid)
+            if len(records) < _PAGE_LIMIT:
+                break
+            page_no += 1
+
+    async def verify_referral(self, uid: str) -> ReferralCheck:
+        """POST the customer list filtered by ``uid`` (no date -> full roster).
+
+        VERIFIED (docs): ``customer-list`` returns the broker's customers (uid +
+        registerTime) independent of any rebate. A matching row confirms; an empty
+        result is an authoritative non-customer, so absence rejects. Signed over the
+        exact JSON body (Bitget POST scheme).
+        """
+        body = json.dumps({"uid": uid}, separators=(",", ":"))
+        payload = await self._send(
+            "POST",
+            _CUSTOMER_LIST_PATH,
+            headers=self._headers("POST", _CUSTOMER_LIST_PATH, body),
+            log_path=_CUSTOMER_LIST_PATH,
+            content=body,
+        )
+        records, _ = self._extract_page(payload)
+        for record in records:
+            if str(record.get("uid")) == uid:
+                return ReferralCheck.CONFIRMED
+        return ReferralCheck.NOT_REFERRAL
 
     def _extract_page(self, payload: object) -> tuple[list[dict], str | None]:
         """Return (records, endId cursor) from a Bitget commissions response."""

@@ -50,11 +50,13 @@ def _redact_sensitive(_: object, __: str, event_dict: dict[str, Any]) -> dict[st
 def configure_logging(*, level: int = logging.INFO, json_output: bool = True) -> None:
     """Configure structlog + stdlib logging. Idempotent enough for app startup."""
     logging.basicConfig(format="%(message)s", level=level)
+    # httpx logs the full URL at INFO, including signed query parameters used by
+    # some exchanges. Adapter logs already provide a sanitized request path.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
     renderer: structlog.types.Processor = (
-        structlog.processors.JSONRenderer()
-        if json_output
-        else structlog.dev.ConsoleRenderer()
+        structlog.processors.JSONRenderer() if json_output else structlog.dev.ConsoleRenderer()
     )
 
     structlog.configure(

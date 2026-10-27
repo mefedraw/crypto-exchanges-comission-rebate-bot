@@ -1,28 +1,178 @@
+## Payout system — 4 processes + Postgres, on a private network.
+##   postgres  — DB (not exposed to the host; internal network only)
+##   migrate   — one-shot `alembic upgrade head`, runs before the app services
+##   bot       — Telegram cabinet (long polling; holds the TG token, NOT the payout key)
+##   accrual   — daily rebate accrual worker (polls exchanges; no TG token, no key)
+##   executor  — on-chain payout sender (holds the payout key; NO TG token) — §2 isolation
+##
+## Secrets come from the host .env (chmod 600), never baked into the image.
+## DATABASE_URL is built from POSTGRES_PASSWORD and points at the `postgres` service.
+
+x-app: &app
+  build: .
+  image: commission-rebate-bot:latest
+  restart: unless-stopped
+  env_file:
+    - .env
+  environment:
+    DATABASE_URL: postgresql+asyncpg://bot:${POSTGRES_PASSWORD}@postgres:5432/bot
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+  # ---- Runtime hardening (§9) ----
+  read_only: true
+  user: app
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
-  bot:
-    build: .
-    image: commission-rebate-bot:latest
+  postgres:
+    image: postgres:16-alpine
     restart: unless-stopped
-
-    # Secrets come from the host .env (chmod 600), never baked into the image.
-    env_file:
-      - .env
-
-    # ---- Runtime hardening ----
-    read_only: true
-    user: app
-    cap_drop:
-      - ALL
+    environment:
+      POSTGRES_USER: bot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: bot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Not published to the host — only the internal compose network can reach it.
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bot -d bot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     security_opt:
       - no-new-privileges:true
-    # Writable scratch space only where the process actually needs it.
-    tmpfs:
-      - /tmp
-
-    # No ports published — long polling makes outbound connections only.
-
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+  migrate:
+    build: .
+    image: commission-rebate-bot:latest
+    command: ["alembic", "upgrade", "head"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://bot:${POSTGRES_PASSWORD}@postgres:5432/bot
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    user: app
+    security_opt:
+      - no-new-privileges:true
+
+  bot:
+    <<: *app
+    container_name: rebate-bot
+    command: ["python", "-m", "bot.main"]
+    env_file:
+      - .env
+      - path: /etc/rebate-bot/exchange-keys.env
+        required: false
+    volumes:
+      - credential_socket:/run/rebate-bot:ro
+
+  accrual:
+    <<: *app
+    container_name: rebate-accrual
+    command: ["python", "-m", "bot.accrual"]
+    env_file:
+      - .env
+      - path: /etc/rebate-bot/exchange-keys.env
+        required: false
+
+  executor:
+    <<: *app
+    container_name: rebate-executor
+    command: ["python", "-m", "bot.executor"]
+
+  logs-agent:
+    image: fluent/fluent-bit:4.2.0
+    restart: unless-stopped
+    command: ["/fluent-bit/bin/fluent-bit", "-c", "/cfg/fluent-bit.conf"]
+    env_file:
+      - .env
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./ops/fluent-bit:/cfg:ro
+      - logs_agent_buffer:/buffer
+    read_only: true
+    user: root
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 96m
+    cpus: "0.5"
+    depends_on:
+      - bot
+      - executor
+      - accrual
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # Root-only helper for admin-initiated affiliate credential rotation. Only
+  # this service receives the Docker socket and write access to the encrypted
+  # exchange env file; the Telegram bot receives neither.
+  credential-updater:
+    profiles: ["credential-updates"]
+    build:
+      context: .
+      dockerfile: Dockerfile.credential-updater
+    image: commission-rebate-credential-updater:latest
+    restart: unless-stopped
+    network_mode: none
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    group_add:
+      - "10001"
+    environment:
+      CREDENTIAL_UPDATER_SOCKET: /run/rebate-bot/credential-updater.sock
+      CREDENTIAL_ENV_FILE: /etc/rebate-bot/exchange-keys.env
+      CREDENTIAL_COMPOSE_PROJECT_DIR: /workspace
+      CREDENTIAL_COMPOSE_FILE: /workspace/docker-compose.yml
+      CREDENTIAL_COMPOSE_PROJECT_NAME: rebate-bot
+      CREDENTIAL_RESTART_SERVICES: bot,accrual
+      CREDENTIAL_ALLOWED_PEER_UID: "10001"
+      CREDENTIAL_SOCKET_GID: "10001"
+      CREDENTIAL_RESTART_DELAY_SECONDS: "3"
+      CREDENTIAL_HEALTH_SETTLE_SECONDS: "3"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace:ro
+      - /etc/rebate-bot:/etc/rebate-bot
+      - credential_socket:/run/rebate-bot
+    tmpfs:
+      - /tmp
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+volumes:
+  pgdata:
+  logs_agent_buffer:
+  credential_socket:
