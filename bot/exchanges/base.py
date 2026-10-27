@@ -11,6 +11,23 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
+
+
+class ReferralCheck(Enum):
+    """Outcome of :meth:`ExchangeAdapter.verify_referral`.
+
+    This is a *hygiene* gate, not a money gate: a stranger's uid earns nothing via
+    :meth:`ExchangeAdapter.get_commission` anyway (it isn't under the owner's
+    affiliate), so the harm to avoid is a *false* :data:`NOT_REFERRAL` that wrongly
+    rejects a genuine referral. Adapters therefore return :data:`NOT_REFERRAL` only
+    when absence from the membership list is authoritative, and :data:`UNVERIFIABLE`
+    when the endpoint is date-windowed/uncertain or the check could not run.
+    """
+
+    CONFIRMED = "confirmed"  # uid IS one of the owner's referrals on this exchange
+    NOT_REFERRAL = "not_referral"  # uid is authoritatively NOT a referral -> reject
+    UNVERIFIABLE = "unverifiable"  # can't tell (no keys, API error, weak endpoint)
 
 
 class ExchangeApiError(Exception):
@@ -54,9 +71,7 @@ class CommissionResult:
 
     # Internal accumulator: (asset, source) -> amount. Kept private so adapters use
     # add_amount() and never have to worry about merging duplicate currency rows.
-    _totals: dict[tuple[str, str | None], Decimal] = field(
-        default_factory=dict, repr=False
-    )
+    _totals: dict[tuple[str, str | None], Decimal] = field(default_factory=dict, repr=False)
 
     def add_amount(self, asset: str, amount: Decimal, source: str | None = None) -> None:
         """Accumulate ``amount`` for a currency (and optional source) with Decimal math."""
@@ -102,6 +117,10 @@ class ExchangeAdapter(ABC):
     supports_uid_filter: bool = True
     #: Whether the API supports arbitrary date ranges (False => only rolling windows).
     supports_date_range: bool = True
+    #: Days the accrual worker waits after a day closes before freezing it, so this
+    #: exchange's commission has settled first (0 = freeze as soon as the day closes).
+    #: Only exchanges that credit commission late need this (e.g. KuCoin).
+    settlement_lag_days: int = 0
 
     @abstractmethod
     async def get_commission(
@@ -110,9 +129,36 @@ class ExchangeAdapter(ABC):
         """Fetch and aggregate commission for ``uid`` over ``[date_from, date_to]``."""
         raise NotImplementedError
 
-    def _new_result(
-        self, uid: str, date_from: datetime, date_to: datetime
-    ) -> CommissionResult:
+    async def verify_referral(self, uid: str) -> ReferralCheck:
+        """Check whether ``uid`` is one of the owner's referrals on this exchange.
+
+        Membership is decided *independently of rebate amount* — a genuine referral
+        who has earned nothing must still return :data:`ReferralCheck.CONFIRMED`.
+        The default is :data:`ReferralCheck.UNVERIFIABLE`; adapters override it when
+        the exchange exposes a membership/invitee endpoint.
+        """
+        return ReferralCheck.UNVERIFIABLE
+
+    async def get_downline_total(self, date_from: datetime, date_to: datetime) -> Decimal | None:
+        """Total USDT rebate across the WHOLE affiliate downline over the period.
+
+        Unlike :meth:`get_commission` (one referral uid), this sums every referral
+        the exchange attributes to the owner's affiliate key — INCLUDING people who
+        never registered in the bot. Returns the accrued (not guaranteed-payable)
+        USDT total, or ``None`` when this exchange has no downline-listing endpoint
+        wired up yet (the caller renders that as "н/д", never as zero).
+
+        Adapters that implement it must honour their own ``max_window_days`` and
+        paginate, exactly like :meth:`get_commission`.
+        """
+        return None
+
+    async def aclose(self) -> None:
+        """Release any held resources (e.g. an HTTP client). No-op by default so
+        callers can uniformly close any adapter, including credential-free stubs."""
+        return None
+
+    def _new_result(self, uid: str, date_from: datetime, date_to: datetime) -> CommissionResult:
         """Factory for a result pre-stamped with this adapter's identity."""
         return CommissionResult(
             exchange=self.name,

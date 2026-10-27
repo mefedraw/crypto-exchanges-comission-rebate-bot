@@ -1,0 +1,1168 @@
+# Turkish translations for Whales RefBack.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the Whales RefBack project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Whales RefBack VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-10-28 01:00+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: tr\n"
+"Language-Team: tr <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+msgid ""
+"<b>Личный кабинет</b>\n"
+"\n"
+"Управляйте кошельком для выплат, привязанными UID бирж, смотрите статистику и запрашивайте вывод "
+"накопленной комиссии.\n"
+"\n"
+"⚠️ Суммы — начисленные биржами данные, не гарантия к выплате."
+msgstr ""
+"<b>Hesabım</b>\n"
+"\n"
+"Ödeme cüzdanınızı ve borsa UID'lerinizi yönetin, istatistikleri görüntüleyin ve biriken komisyonu"
+" çekin.\n"
+"\n"
+"⚠️ Tutarlar borsaların tahakkuk verileridir; ödeme garantisi değildir."
+
+msgid ""
+"Приглашение учтено.\n"
+"\n"
+msgstr ""
+"Davet kaydedildi.\n"
+"\n"
+
+msgid ""
+"Вы уже зарегистрированы. Приглашение учитывается только при первом запуске бота.\n"
+"\n"
+msgstr ""
+"Zaten kayıtlısınız. Davetler yalnızca botu ilk başlatmada sayılır.\n"
+"\n"
+
+msgid ""
+"Это ваша ссылка. Самоприглашение не учитывается.\n"
+"\n"
+msgstr ""
+"Bu sizin bağlantınız. Kendi kendine davet sayılmaz.\n"
+"\n"
+
+msgid ""
+"Пригласительная ссылка недействительна. Личный кабинет доступен.\n"
+"\n"
+msgstr ""
+"Davet bağlantısı geçersiz. Hesabınıza yine de erişebilirsiniz.\n"
+"\n"
+
+msgid ""
+"Отменено.\n"
+"\n"
+msgstr ""
+"İptal edildi.\n"
+"\n"
+
+msgid "💳 Кошелёк"
+msgstr "💳 Cüzdan"
+
+msgid "🆔 UID биржи"
+msgstr "🆔 Borsa UID'leri"
+
+msgid "📊 Статистика"
+msgstr "📊 İstatistikler"
+
+msgid "🔗 Рефералки"
+msgstr "🔗 Referans bağlantıları"
+
+msgid "💸 Вывести USDT"
+msgstr "💸 USDT çek"
+
+msgid "💸 Вывести MNT"
+msgstr "💸 MNT çek"
+
+msgid "Техническая поддержка"
+msgstr "Teknik destek"
+
+msgid "Пригласить друга"
+msgstr "Arkadaş davet et"
+
+msgid " (в ожидании)"
+msgstr " (beklemede)"
+
+msgid "⬅️ В меню"
+msgstr "⬅️ Menü"
+
+msgid "⬅️ Рефералки"
+msgstr "⬅️ Referans bağlantıları"
+
+msgid "✅ Да, отвязать"
+msgstr "✅ Evet, bağlantıyı kaldır"
+
+msgid "⬅️ Отмена"
+msgstr "⬅️ İptal"
+
+msgid "⬅️ Назад к списку"
+msgstr "⬅️ Listeye dön"
+
+msgid "✅ Подтвердить вывод"
+msgstr "✅ Çekimi onayla"
+
+msgid ""
+"У вас пока нет привязанных UID.\n"
+"Выберите биржу, чтобы добавить:"
+msgstr ""
+"Henüz bağlı UID yok.\n"
+"Eklemek için bir borsa seçin:"
+
+msgid "Ваши UID:\n"
+msgstr "UID'leriniz:\n"
+
+msgid ""
+"\n"
+"\n"
+"Выберите биржу, чтобы добавить ещё:"
+msgstr ""
+"\n"
+"\n"
+"Başka UID eklemek için borsa seçin:"
+
+#, python-brace-format
+msgid ""
+"🚫 UID <code>{v0}</code> не найден среди ваших рефералов на этой бирже.\n"
+"Проверьте, что это реферал именно вашего аккаунта и на правильной бирже.\n"
+"\n"
+msgstr ""
+"🚫 <code>{v0}</code> UID'si bu borsadaki referanslarınız arasında bulunamadı.\n"
+"Doğru borsayı ve referansın hesabınıza bağlı olduğunu kontrol edin.\n"
+"\n"
+
+#, python-brace-format
+msgid ""
+"⚠️ UID <code>{v0}</code> уже занят другим пользователем.\n"
+"\n"
+msgstr ""
+"⚠️ <code>{v0}</code> UID'si başka kullanıcıya bağlı.\n"
+"\n"
+
+#, python-brace-format
+msgid "✅ Добавлен {v0}: {v1}"
+msgstr "✅ Eklendi: {v0}: {v1}"
+
+#, python-brace-format
+msgid "✅ Добавлен {v0}"
+msgstr "✅ Eklendi: {v0}"
+
+#, python-brace-format
+msgid ""
+"{v0} — реферал подтверждён.\n"
+"\n"
+msgstr ""
+"{v0} — referans doğrulandı.\n"
+"\n"
+
+#, python-brace-format
+msgid ""
+"{v0}\n"
+"⚠️ Владение не подтверждено (биржа не даёт это проверить) — в расчёт всё равно попадёт только "
+"реальный рефбек.\n"
+"\n"
+msgstr ""
+"{v0}\n"
+"⚠️ Sahiplik doğrulanamadı (borsa doğrulamayı desteklemiyor). Hesaplamaya yalnızca gerçek komisyon"
+" iadesi dahil edilir.\n"
+"\n"
+
+#, python-brace-format
+msgid "Пришлите UID для <b>{v0}</b>:"
+msgstr "<b>{v0}</b> için UID gönderin:"
+
+msgid "Сессия истекла. Откройте кабинет заново: /start"
+msgstr "Oturum süresi doldu. Hesabınızı yeniden açın: /start"
+
+msgid "Спор по UID"
+msgstr "UID anlaşmazlığı"
+
+#, python-brace-format
+msgid ""
+"Пользователь {v0} пытается привязать {v1}:{v2}, уже закреплён за {v3}. Переназначить (админка → 🔀"
+" Переназначить UID): {v4} {v5} <user_id>"
+msgstr ""
+"{v0} kullanıcısı, {v3} kullanıcısına ait {v1}:{v2} UID'sini bağlamaya çalışıyor. Yeniden ata "
+"(yönetim → 🔀 UID ata): {v4} {v5} <user_id>"
+
+#, python-brace-format
+msgid ""
+"Отвязать <b>{v0}</b>?\n"
+"\n"
+"Начисления по нему остановятся. Уже накопленное останется доступным к выводу, и вы сможете "
+"вернуть этот UID позже — просто привязав его заново."
+msgstr ""
+"<b>{v0}</b> bağlantısı kaldırılsın mı?\n"
+"\n"
+"Yeni tahakkuklar durur. Biriken fonlar çekim kurallarına tabi olarak kalır. UID'yi daha sonra "
+"yeniden bağlayabilirsiniz."
+
+msgid ""
+"🗑 UID отвязан. Вернуть можно, привязав его заново.\n"
+"\n"
+msgstr ""
+"🗑 UID bağlantısı kaldırıldı. Daha sonra yeniden bağlayabilirsiniz.\n"
+"\n"
+
+msgid ""
+"UID не найден.\n"
+"\n"
+msgstr ""
+"UID bulunamadı.\n"
+"\n"
+
+#, python-brace-format
+msgid ""
+"Текущий кошелёк: <code>{v0}</code>\n"
+"\n"
+msgstr ""
+"Mevcut cüzdan: <code>{v0}</code>\n"
+"\n"
+
+msgid ""
+"Кошелёк ещё не задан.\n"
+"\n"
+msgstr ""
+"Henüz cüzdan tanımlanmadı.\n"
+"\n"
+
+#, python-brace-format
+msgid "{v0}Пришлите ваш <b>BEP20 (BSC)</b> адрес (0x…). Он заменит текущий."
+msgstr "{v0}<b>BEP20 (BSC)</b> adresinizi (0x…) gönderin. Mevcut cüzdanın yerini alacak."
+
+msgid "⚠️ Кошелёк временно недоступен: сервер не настроен (нет MASTER_KEY)."
+msgstr "⚠️ Cüzdan geçici olarak kullanılamıyor: sunucu yapılandırması eksik (MASTER_KEY yok)."
+
+#, python-brace-format
+msgid ""
+"⚠️ {v0}\n"
+"Пришлите корректный BEP20-адрес (0x…) или вернитесь в меню."
+msgstr ""
+"⚠️ {v0}\n"
+"Geçerli bir BEP20 adresi (0x…) gönderin veya menüye dönün."
+
+#, python-brace-format
+msgid "✅ Кошелёк сохранён: <code>{v0}</code>"
+msgstr "✅ Cüzdan kaydedildi: <code>{v0}</code>"
+
+msgid "⚠️ Баланс рассчитан по начисленным биржами данным на момент запроса."
+msgstr "⚠️ Bakiye, sorgu anındaki borsa tahakkuk verilerine göre hesaplanır."
+
+msgid "доступно сейчас"
+msgstr "şimdi kullanılabilir"
+
+msgid "ещё не было"
+msgstr "henüz yok"
+
+msgid "Доступно к выводу"
+msgstr "Çekilebilir"
+
+msgid "Накоплено"
+msgstr "Biriken"
+
+msgid "⏳ Пока недоступно к выводу — причина при нажатии «💸 Вывести»"
+msgstr "⏳ Henüz çekilemez. Nedeni görmek için «💸 Çek» düğmesine dokunun."
+
+#, python-brace-format
+msgid "Ближайшая выплата USDT: {v0}"
+msgstr "Sonraki USDT ödemesi: {v0}"
+
+#, python-brace-format
+msgid "Ближайшая выплата MNT: {v0}"
+msgstr "Sonraki MNT ödemesi: {v0}"
+
+#, python-brace-format
+msgid "Ближайшая доступная выплата: {v0}"
+msgstr "Sonraki kullanılabilir ödeme: {v0}"
+
+msgid "📊 <b>Статистика</b>"
+msgstr "📊 <b>İstatistikler</b>"
+
+#, python-brace-format
+msgid "Ранг: <b>{v0}</b>"
+msgstr "Seviye: <b>{v0}</b>"
+
+#, python-brace-format
+msgid "Последняя выплата: {v0}"
+msgstr "Son ödeme: {v0}"
+
+#, python-brace-format
+msgid "Ближайшее сгорание остатка: {v0}"
+msgstr "Bakiyenin en yakın sona erme tarihi: {v0}"
+
+msgid "Ваши UID:"
+msgstr "UID'leriniz:"
+
+#, python-brace-format
+msgid "• {v0}: <code>{v1}</code> — за месяц {v2}"
+msgstr "• {v0}: <code>{v1}</code> — bu ay {v2}"
+
+msgid "UID пока не добавлены — привяжите биржу через «🆔 UID биржи»."
+msgstr "Henüz UID eklenmedi. «🆔 Borsa UID'leri» üzerinden bir borsa bağlayın."
+
+msgid "⚠️ Суммы — начисленные биржами данные, не гарантия к выплате."
+msgstr "⚠️ Tutarlar borsaların tahakkuk verileridir; ödeme garantisi değildir."
+
+msgid "⏸ Выплаты временно приостановлены администратором."
+msgstr "⏸ Ödemeler yönetici tarafından geçici olarak durduruldu."
+
+msgid "🚫 Ваш аккаунт заблокирован, обратитесь к администратору."
+msgstr "🚫 Hesabınız engellendi. Yöneticiyle iletişime geçin."
+
+msgid "⚠️ Сначала привяжите кошелёк через «💳 Кошелёк»."
+msgstr "⚠️ Önce «💳 Cüzdan» üzerinden cüzdan bağlayın."
+
+#, python-brace-format
+msgid "⚠️ Недостаточно начислений для вывода ({v0})."
+msgstr "⚠️ Çekim için yetersiz tahakkuk ({v0})."
+
+msgid "⚠️ У вас уже есть заявка на вывод в обработке."
+msgstr "⚠️ Zaten işlenen bir çekim talebiniz var."
+
+#, python-brace-format
+msgid "⚠️ Сумма к выводу ниже минимальной ({v0} USDT)."
+msgstr "⚠️ Çekim tutarı minimumun altında ({v0} USDT)."
+
+msgid "⚠️ Вывод в MNT временно недоступен."
+msgstr "⚠️ MNT çekimleri geçici olarak kullanılamıyor."
+
+msgid "Последняя выплата: ещё не было"
+msgstr "Son ödeme: henüz yok"
+
+#, python-brace-format, python-format
+msgid "Последняя выплата: {v0:%Y-%m-%d %H:%M} (UTC+8)"
+msgstr "Son ödeme: {v0:%Y-%m-%d %H:%M} (UTC+8)"
+
+#, python-brace-format
+msgid "⚠️ Вывод будет доступен после {v0}."
+msgstr "⚠️ Çekim {v0} sonrasında kullanılabilir."
+
+msgid "⚠️ Вывод сейчас недоступен."
+msgstr "⚠️ Çekim şu anda kullanılamıyor."
+
+#, python-brace-format
+msgid ""
+"Заявка на вывод <b>{v0} MNT</b> (≈{v1} USDT) на {v2}.\n"
+"{v3}\n"
+"Подтвердите отправку заявки.\n"
+"⏳ Выплата MNT — после подтверждения администратором.\n"
+"\n"
+"{v4}"
+msgstr ""
+"{v2} adresine <b>{v0} MNT</b> (≈{v1} USDT) çekim talebi.\n"
+"{v3}\n"
+"Talebi onaylayın.\n"
+"⏳ MNT ödemeleri yönetici onayı gerektirir.\n"
+"\n"
+"{v4}"
+
+#, python-brace-format
+msgid ""
+"Заявка на вывод <b>{v0} USDT</b> на {v1}.\n"
+"{v2}\n"
+"Подтвердите отправку заявки.\n"
+"\n"
+"{v3}"
+msgstr ""
+"{v1} adresine <b>{v0} USDT</b> çekim talebi.\n"
+"{v2}\n"
+"Talebi onaylayın.\n"
+"\n"
+"{v3}"
+
+#, python-brace-format
+msgid ""
+"✅ Заявка на вывод {v0} MNT создана.\n"
+"⏳ Выплата MNT — после подтверждения администратором.\n"
+"\n"
+"{v1}"
+msgstr ""
+"✅ {v0} MNT çekim talebi oluşturuldu.\n"
+"⏳ MNT ödemeleri yönetici onayı gerektirir.\n"
+"\n"
+"{v1}"
+
+#, python-brace-format
+msgid ""
+"✅ Заявка на вывод {v0} USDT создана, отправим в ближайшее время.\n"
+"Пришлём уведомление, когда средства дойдут до получателя.\n"
+"\n"
+"{v1}"
+msgstr ""
+"✅ {v0} USDT çekim talebi oluşturuldu, yakında gönderilecek.\n"
+"Fonlar alıcıya ulaştığında bildirim göndereceğiz.\n"
+"\n"
+"{v1}"
+
+msgid "⚠️ Срок подтверждения истёк или заявка уже обрабатывается — начните вывод заново"
+msgstr "⚠️ Onay süresi doldu veya talep zaten işleniyor. Çekimi yeniden başlatın."
+
+msgid ""
+"<b>🔗 Реферальные ссылки</b>\n"
+"\n"
+"Выберите биржу — покажу ссылку и реф-код.\n"
+"Реф-код копируется одним тапом (удобно при регистрации через приложение)."
+msgstr ""
+"<b>🔗 Referans bağlantıları</b>\n"
+"\n"
+"Bağlantı ve referans kodunu görmek için bir borsa seçin.\n"
+"Uygulamada kayıt olurken kodu kopyalamak için dokunun."
+
+msgid ""
+"\n"
+"<b>В ожидании</b>"
+msgstr ""
+"\n"
+"<b>Beklemede</b>"
+
+#, python-brace-format
+msgid ""
+"<b>{v0}</b>{v1}{v2}\n"
+"\n"
+"🔗 Ссылка:\n"
+"{v3}\n"
+"\n"
+"📋 Реф-код (нажмите, чтобы скопировать):\n"
+"<code>{v4}</code>"
+msgstr ""
+"<b>{v0}</b>{v1}{v2}\n"
+"\n"
+"🔗 Bağlantı:\n"
+"{v3}\n"
+"\n"
+"📋 Referans kodu (kopyalamak için dokunun):\n"
+"<code>{v4}</code>"
+
+msgid "Биржа не найдена"
+msgstr "Borsa bulunamadı"
+
+msgid "Адрес должен быть в формате 0x + 40 hex-символов."
+msgstr "Adres 0x ve ardından 40 onaltılık karakter içermelidir."
+
+msgid "Неизвестная биржа."
+msgstr "Bilinmeyen borsa."
+
+msgid "UID: только латиница и цифры, до 64 символов."
+msgstr "UID: en fazla 64 Latin harfi ve rakam."
+
+msgid "Поделиться ссылкой"
+msgstr "Bağlantıyı paylaş"
+
+msgid "Партнерская программа"
+msgstr "Ortaklık programı"
+
+msgid "В меню"
+msgstr "Menü"
+
+msgid "Не удалось получить ссылку бота. Пожалуйста, попробуйте позже."
+msgstr "Bot bağlantısı alınamadı. Lütfen daha sonra tekrar deneyin."
+
+#, python-brace-format
+msgid ""
+"<b>Пригласить друга</b>\n"
+"\n"
+"Ваша ссылка:\n"
+"<code>{v0}</code>\n"
+"\n"
+"Ваш код: <code>{v1}</code>\n"
+"\n"
+"Приглашено: <b>{v2}</b>\n"
+"Привязали UID: <b>{v3}</b>"
+msgstr ""
+"<b>Arkadaş davet et</b>\n"
+"\n"
+"Bağlantınız:\n"
+"<code>{v0}</code>\n"
+"\n"
+"Kodunuz: <code>{v1}</code>\n"
+"\n"
+"Davet edilen: <b>{v2}</b>\n"
+"UID bağlayan: <b>{v3}</b>"
+
+msgid "Код выдается автоматически. Откройте «Пригласить друга»."
+msgstr "Kod otomatik atanır. «Arkadaş davet et» bölümünü açın."
+
+msgid "Кейс не найден или кнопка устарела."
+msgstr "Talep bulunamadı veya düğmenin süresi doldu."
+
+msgid "Черновик устарел. Откройте кейс заново."
+msgstr "Taslak süresi doldu. Talebi yeniden açın."
+
+#, python-brace-format
+msgid ""
+"<b>Создание обращения пока недоступно</b>\n"
+"\n"
+"Для создания обращения нужно накопить не менее <b>100 USDT рефбека</b> за все время по всем вашим"
+" аккаунтам.\n"
+"\n"
+"Сейчас учтено: <b>{v0} USDT</b> до удержаний. Уже выведенные суммы тоже учитываются."
+msgstr ""
+"<b>Yeni destek talebi henüz açılamıyor</b>\n"
+"\n"
+"Talep açmak için tüm hesaplarınızda yaşam boyu en az <b>100 USDT komisyon iadesi</b> "
+"birikmelidir.\n"
+"\n"
+"Şu an sayılan: kesintilerden önce <b>{v0} USDT</b>. Önceden çekilen tutarlar da sayılır."
+
+msgid "Обращения временно недоступны. Пожалуйста, попробуйте позже."
+msgstr "Destek talepleri geçici olarak kullanılamıyor. Daha sonra deneyin."
+
+msgid "У вас нет активных UID. Сначала привяжите аккаунт биржи в личном кабинете."
+msgstr "Aktif UID'niz yok. Önce hesabınıza bir borsa hesabı bağlayın."
+
+msgid ""
+"<b>Новое обращение</b>\n"
+"\n"
+"Выберите биржу:"
+msgstr ""
+"<b>Yeni destek talebi</b>\n"
+"\n"
+"Borsa seçin:"
+
+msgid "Поддержка:\n"
+msgstr "Destek:\n"
+
+msgid "Пользователь:\n"
+msgstr "Kullanıcı:\n"
+
+#, python-brace-format
+msgid ""
+"Статус: <b>{v0}</b>\n"
+"\n"
+msgstr ""
+"Durum: <b>{v0}</b>\n"
+"\n"
+
+msgid "<b>Техническая поддержка</b>"
+msgstr "<b>Teknik destek</b>"
+
+msgid "Кнопка устарела. Откройте кейс заново."
+msgstr "Düğmenin süresi doldu. Talebi yeniden açın."
+
+msgid "У вас нет активных UID на этой бирже."
+msgstr "Bu borsada aktif UID'niz yok."
+
+msgid "Страница не найдена."
+msgstr "Sayfa bulunamadı."
+
+msgid "<b>Выберите UID аккаунта</b>"
+msgstr "<b>Hesap UID'sini seçin</b>"
+
+msgid "Выберите UID выбранной биржи."
+msgstr "Seçtiğiniz borsaya ait bir UID seçin."
+
+#, python-brace-format
+msgid ""
+"<b>Кейс: {v0}, UID {v1}</b>\n"
+"\n"
+"Опишите ваш вопрос одним текстовым сообщением (до 1200 символов).\n"
+"Не указывайте API-ключи, пароли и seed-фразы."
+msgstr ""
+"<b>Talep: {v0}, UID {v1}</b>\n"
+"\n"
+"Sorunuzu tek metin mesajında açıklayın (en fazla 1200 karakter).\n"
+"API anahtarları, parolalar veya kurtarma ifadeleri paylaşmayın."
+
+msgid "Отправьте исправленный текст сообщения (до 1200 символов)."
+msgstr "Düzeltilmiş mesajı gönderin (en fazla 1200 karakter)."
+
+msgid "Этот черновик уже отправлен или отменен."
+msgstr "Bu taslak zaten gönderildi veya iptal edildi."
+
+#, python-brace-format
+msgid ""
+"<b>Обращение №{v0}</b>\n"
+"Статус: <b>{v1}</b>\n"
+"\n"
+"Сообщение принято."
+msgstr ""
+"<b>Talep #{v0}</b>\n"
+"Durum: <b>{v1}</b>\n"
+"\n"
+"Mesaj alındı."
+
+msgid "Обращения недоступны."
+msgstr "Destek talepleri kullanılamıyor."
+
+msgid "Кнопка устарела. Откройте обращения заново."
+msgstr "Düğmenin süresi doldu. Talepleri yeniden açın."
+
+msgid ""
+"<b>Обращения</b>\n"
+"\n"
+msgstr ""
+"<b>Destek talepleri</b>\n"
+"\n"
+
+msgid "Закрытые"
+msgstr "Kapalı"
+
+msgid "Активные"
+msgstr "Aktif"
+
+msgid "<b>Мои обращения</b>"
+msgstr "<b>Taleplerim</b>"
+
+msgid ""
+"\n"
+"\n"
+"Обращений пока нет."
+msgstr ""
+"\n"
+"\n"
+"Henüz destek talebi yok."
+
+msgid "Этот кейс уже закрыт."
+msgstr "Bu talep zaten kapalı."
+
+#, python-brace-format
+msgid ""
+"<b>Кейс №{v0}</b>\n"
+"\n"
+"Отправьте текст сообщения (до 1200 символов)."
+msgstr ""
+"<b>Talep #{v0}</b>\n"
+"\n"
+"Mesajınızı gönderin (en fazla 1200 karakter)."
+
+#, python-brace-format
+msgid "Закрыть кейс №{v0}?"
+msgstr "Talep #{v0} kapatılsın mı?"
+
+#, python-brace-format
+msgid "<b>История кейса №{v0}</b>"
+msgstr "<b>Talep #{v0} geçmişi</b>"
+
+msgid "Сообщение недоступно."
+msgstr "Mesaj kullanılamıyor."
+
+msgid ""
+"<b>Предпросмотр обращения для владельца</b>\n"
+"\n"
+msgstr ""
+"<b>Sahibine gönderilecek talebin önizlemesi</b>\n"
+"\n"
+
+msgid ""
+"<b>Предпросмотр сообщения</b>\n"
+"\n"
+msgstr ""
+"<b>Mesaj önizlemesi</b>\n"
+"\n"
+
+msgid "Создать новое обращение"
+msgstr "Yeni destek talebi"
+
+msgid "Мои обращения"
+msgstr "Taleplerim"
+
+msgid "Обращения"
+msgstr "Destek talepleri"
+
+msgid "В админку"
+msgstr "Yönetim paneli"
+
+msgid "Назад"
+msgstr "Geri"
+
+msgid "Далее"
+msgstr "İleri"
+
+msgid "Отмена"
+msgstr "İptal"
+
+msgid "Отправить"
+msgstr "Gönder"
+
+msgid "Изменить текст"
+msgstr "Metni düzenle"
+
+msgid "Взять в работу"
+msgstr "İşleme al"
+
+msgid "Ответить"
+msgstr "Yanıtla"
+
+msgid "Дополнить"
+msgstr "Mesaj ekle"
+
+msgid "Закрыть кейс"
+msgstr "Talebi kapat"
+
+msgid "История сообщений"
+msgstr "Mesaj geçmişi"
+
+msgid "Открыть кейс"
+msgstr "Talebi aç"
+
+msgid "Поддержка"
+msgstr "Destek"
+
+msgid "Пользователь"
+msgstr "Kullanıcı"
+
+msgid "Новее"
+msgstr "Daha yeni"
+
+msgid "Ранее"
+msgstr "Daha eski"
+
+msgid "К кейсу"
+msgstr "Talebe dön"
+
+#, python-brace-format
+msgid "Обращение №{v0}"
+msgstr "Talep #{v0}"
+
+msgid "Новое обращение"
+msgstr "Yeni talep"
+
+#, python-brace-format
+msgid ""
+"<b>{v0}</b>\n"
+"Биржа: {v1}\n"
+"UID: <code>{v2}</code>\n"
+"Пользователь: {v3}\n"
+"Telegram ID: <code>{v4}</code>\n"
+"\n"
+"{v5}"
+msgstr ""
+"<b>{v0}</b>\n"
+"Borsa: {v1}\n"
+"UID: <code>{v2}</code>\n"
+"Kullanıcı: {v3}\n"
+"Telegram ID: <code>{v4}</code>\n"
+"\n"
+"{v5}"
+
+msgid "Ответ поддержки"
+msgstr "Destek yanıtı"
+
+msgid "Дополнение пользователя"
+msgstr "Kullanıcı ek mesajı"
+
+#, python-brace-format
+msgid ""
+"<b>Обращение №{v0}: {v1}</b>\n"
+"\n"
+"{v2}"
+msgstr ""
+"<b>Talep #{v0}: {v1}</b>\n"
+"\n"
+"{v2}"
+
+#, python-brace-format
+msgid "Пожалуйста, отправьте текст от 1 до {v0} символов."
+msgstr "Lütfen 1 ile {v0} karakter arasında metin gönderin."
+
+msgid "Этот UID больше не привязан к вашему аккаунту. Выберите другой."
+msgstr "Bu UID artık hesabınıza bağlı değil. Başkasını seçin."
+
+msgid "Кейс не найден или недоступен."
+msgstr "Talep bulunamadı veya erişiminiz yok."
+
+msgid "Взять обращение в работу может только администратор."
+msgstr "Talebi yalnızca yönetici işleme alabilir."
+
+msgid ""
+"За последние 24 часа вы уже создали 2 обращения. Пожалуйста, попробуйте позже или дополните "
+"существующее в разделе «Мои обращения»."
+msgstr ""
+"Son 24 saatte zaten 2 talep oluşturdunuz. Daha sonra deneyin veya «Taleplerim» bölümündeki mevcut"
+" bir talebe mesaj ekleyin."
+
+msgid ""
+"У вас уже 3 открытых обращения. Пожалуйста, дополните существующее в разделе «Мои обращения» или "
+"дождитесь его решения."
+msgstr ""
+"Zaten 3 açık talebiniz var. «Taleplerim» bölümünden mevcut talebi güncelleyin veya çözülmesini "
+"bekleyin."
+
+msgid "Обращения для этого аккаунта недоступны."
+msgstr "Bu hesap için destek talepleri kullanılamıyor."
+
+msgid "Для открытия кейса нужно накопить не менее 100 USDT рефбека за все время."
+msgstr "Talep açmak için yaşam boyu en az 100 USDT komisyon iadesi gerekir."
+
+#, python-brace-format
+msgid "По этому UID уже открыт кейс №{v0}. Дополните его в разделе «Мои обращения»."
+msgstr "Bu UID için #{v0} talebi zaten açık. «Taleplerim» bölümünden mesaj ekleyin."
+
+msgid "Пожалуйста, подождите минуту перед следующим сообщением в кейсе."
+msgstr "Talebe yeniden mesaj göndermeden önce bir dakika bekleyin."
+
+#, python-brace-format
+msgid ""
+"<b>Обращение №{v0}: кейс закрыт.</b>\n"
+"\n"
+"Откройте кейс и ознакомьтесь с перепиской."
+msgstr ""
+"<b>Talep #{v0} kapatıldı.</b>\n"
+"\n"
+"Yazışmayı okumak için talebi açın."
+
+#, python-brace-format
+msgid ""
+"<b>По обращению №{v0} требуется ваш ответ.</b>\n"
+"\n"
+"Откройте кейс и ознакомьтесь с сообщением поддержки."
+msgstr ""
+"<b>Talep #{v0} yanıtınızı bekliyor.</b>\n"
+"\n"
+"Destek mesajını okumak için talebi açın."
+
+msgid "Условия рангов"
+msgstr "Seviye koşulları"
+
+msgid "История ранга"
+msgstr "Seviye geçmişi"
+
+msgid "Вывести партнерские USDT"
+msgstr "Ortaklık USDT çek"
+
+msgid "Вывести партнерские MNT"
+msgstr "Ortaklık MNT çek"
+
+#, python-brace-format
+msgid ""
+"<b>Партнерская программа</b>\n"
+"\n"
+"Ранг: <b>{v0}</b>\n"
+"Доля дохода владельца: <b>{v1:.0f}%</b>\n"
+"\n"
+msgstr ""
+"<b>Ortaklık programı</b>\n"
+"\n"
+"Seviye: <b>{v0}</b>\n"
+"Sahip gelirinden pay: <b>{v1:.0f}%</b>\n"
+"\n"
+
+#, python-brace-format
+msgid ""
+"Активны в {v0:%m.%Y}: <b>{v1}/{v2} ({v3}%)</b>\n"
+"Подтвержденная ступень: <b>{v4}</b>\n"
+msgstr ""
+"{v0:%m.%Y} döneminde aktif: <b>{v1}/{v2} ({v3}%)</b>\n"
+"Hak edilen seviye: <b>{v4}</b>\n"
+
+#, python-brace-format, python-format
+msgid "Защита до <b>{v0:%d.%m.%Y %H:%M}</b> (UTC+8)\n"
+msgstr "Koruma bitişi: <b>{v0:%d.%m.%Y %H:%M}</b> (UTC+8)\n"
+
+#, python-brace-format
+msgid "Проверка за {v0}: ожидаются данные бирж.\n"
+msgstr "{v0} incelemesi: borsa verileri bekleniyor.\n"
+
+msgid ""
+"\n"
+"<b>Пожизненный рефбек активных рефералов</b>\n"
+msgstr ""
+"\n"
+"<b>Aktif referansların yaşam boyu iadesi</b>\n"
+
+msgid "<b>Прямые рефералы по рефбеку за все время</b>\n"
+msgstr "<b>Yaşam boyu iadeye göre doğrudan referanslar</b>\n"
+
+#, python-brace-format
+msgid "От {v0} USDT: <b>{v1}</b>"
+msgstr "{v0} USDT ve üzeri: <b>{v1}</b>"
+
+#, python-brace-format
+msgid ""
+"\n"
+"\n"
+"Доступно: <b>{v0} USDT</b>\n"
+"В выплатах: {v1} USDT\n"
+"Выплачено: {v2} USDT"
+msgstr ""
+"\n"
+"\n"
+"Kullanılabilir: <b>{v0} USDT</b>\n"
+"Ödemelerde: {v1} USDT\n"
+"Ödenen: {v2} USDT"
+
+#, python-brace-format
+msgid ""
+"\n"
+"\n"
+"Доступно: <b>{v0} MNT</b> (~{v1} USDT)\n"
+"В выплатах MNT: ~{v2} USDT\n"
+"Выплачено MNT: ~{v3} USDT"
+msgstr ""
+"\n"
+"\n"
+"Kullanılabilir: <b>{v0} MNT</b> (~{v1} USDT)\n"
+"MNT ödemelerinde: ~{v2} USDT\n"
+"Ödenen MNT: ~{v3} USDT"
+
+#, python-brace-format, python-format
+msgid ""
+"\n"
+"\n"
+"Начало учета новых доходов: {v0:%d.%m.%Y} (UTC+8)."
+msgstr ""
+"\n"
+"\n"
+"Yeni gelir sayımının başlangıcı: {v0:%d.%m.%Y} (UTC+8)."
+
+msgid "Выплаты временно приостановлены администратором."
+msgstr "Ödemeler yönetici tarafından geçici olarak durduruldu."
+
+msgid "Вывод для этого аккаунта недоступен. Обратитесь в поддержку."
+msgstr "Bu hesap için çekim kullanılamıyor. Destekle iletişime geçin."
+
+msgid "У вас уже есть выплата в этой валюте в обработке."
+msgstr "Bu varlıkta zaten işlenen bir ödemeniz var."
+
+msgid "Сначала привяжите кошелек в личном кабинете."
+msgstr "Önce hesabınıza cüzdan bağlayın."
+
+msgid "Минимальная сумма партнерского вывода: 10 USDT или эквивалент в MNT."
+msgstr "Minimum ortaklık çekimi: 10 USDT veya MNT karşılığı."
+
+msgid "Вывод MNT временно недоступен."
+msgstr "MNT çekimleri geçici olarak kullanılamıyor."
+
+msgid "Вывод сейчас недоступен."
+msgstr "Çekim şu anda kullanılamıyor."
+
+msgid "<b>История партнерского ранга</b>"
+msgstr "<b>Ortaklık seviye geçmişi</b>"
+
+msgid ""
+"\n"
+"\n"
+"Месячных проверок пока нет."
+msgstr ""
+"\n"
+"\n"
+"Henüz aylık inceleme yok."
+
+msgid "ожидаются данные бирж"
+msgstr "borsa verileri bekleniyor"
+
+msgid "защита ранга"
+msgstr "seviye koruması"
+
+#, python-brace-format
+msgid ""
+"\n"
+"\n"
+"<b>{v0:%m.%Y}</b>: {v1}\n"
+"Активны: {v2}/{v3}. Ступень: {v4}."
+msgstr ""
+"\n"
+"\n"
+"<b>{v0:%m.%Y}</b>: {v1}\n"
+"Aktif: {v2}/{v3}. Seviye: {v4}."
+
+msgid " или "
+msgstr " veya "
+
+#, python-brace-format
+msgid "{v0} с рефбеком {v1}+ USDT"
+msgstr "{v1}+ USDT iadesi olan {v0} kişi"
+
+msgid ""
+"<b>Партнерские ранги</b>\n"
+"\n"
+msgstr ""
+"<b>Ortaklık seviyeleri</b>\n"
+"\n"
+
+msgid ""
+"\n"
+"\n"
+"До первого ранга: 0%. Чек: подтвержденный рефбек до удержаний по всем UID приглашенного за все "
+"время.\n"
+"Вознаграждение финансируется из сбора владельца, рефбек приглашенного не уменьшается. Прошлые "
+"доходы не пересчитываются."
+msgstr ""
+"\n"
+"\n"
+"İlk seviyeden önce: %0. Nitelik tutarı, davet edilenin tüm UID'lerindeki yaşam boyu doğrulanmış, "
+"kesinti öncesi komisyon iadesidir.\n"
+"Ödüller sahibin ücret gelirinden karşılanır; davet edilenin iadesi azalmaz. Geçmiş gelirler "
+"yeniden hesaplanmaz."
+
+msgid ""
+"\n"
+"\n"
+"Активный реферал: от 10 USDT gross за календарный месяц по всем UID. В ступени входят только "
+"активные рефералы; их чеки остаются пожизненными.\n"
+"Повышение: сразу, с защитой на три календарных месяца. После защиты неподтвержденный ранг "
+"снижается на один уровень за закрытый месяц.\n"
+"Доля активности 30% не понижает закрытую ступень и не сохраняет незакрытую. Ошибки API не "
+"считаются неактивностью."
+msgstr ""
+"\n"
+"\n"
+"Aktif referans: tüm UID'lerde takvim ayı başına en az 10 USDT brüt iade. Yalnızca aktif "
+"referanslar seviye koşuluna sayılır; tutarları yaşam boyu toplamdır.\n"
+"Yükselme anında gerçekleşir ve üç takvim ayı korunur. Sonrasında koşulları karşılanmayan seviye "
+"her tamamlanmış ay için bir basamak düşer.\n"
+"%30 aktiflik oranı, hak edilen seviyeyi düşürmez ve hak edilmeyeni korumaz. API hataları pasiflik"
+" sayılmaz."
+
+msgid "Подтвердить вывод"
+msgstr "Çekimi onayla"
+
+#, python-brace-format
+msgid ""
+"<b>Вывод партнерского дохода</b>\n"
+"\n"
+"Сумма: <b>{v0} {v1}</b>\n"
+"Кошелек: {v2}\n"
+msgstr ""
+"<b>Ortaklık gelirini çek</b>\n"
+"\n"
+"Tutar: <b>{v0} {v1}</b>\n"
+"Cüzdan: {v2}\n"
+
+msgid "Сеть: Mantle. Выплата после подтверждения администратором."
+msgstr "Ağ: Mantle. Ödeme için yönetici onayı gerekir."
+
+msgid "Сеть: BEP20. Сетевая комиссия будет удержана при отправке."
+msgstr "Ağ: BEP20. Ağ ücreti gönderim sırasında kesilecektir."
+
+msgid "Кнопка устарела. Начните вывод заново."
+msgstr "Düğmenin süresi doldu. Çekimi yeniden başlatın."
+
+msgid "Подтверждение устарело или баланс изменился. Начните вывод заново."
+msgstr "Onay süresi doldu veya bakiye değişti. Çekimi yeniden başlatın."
+
+#, python-brace-format
+msgid "Партнерская выплата №{v0} создана: {v1} {v2}."
+msgstr "Ortaklık ödemesi #{v0} oluşturuldu: {v1} {v2}."
+
+msgid ""
+"\n"
+"Ожидает подтверждения администратором."
+msgstr ""
+"\n"
+"Yönetici onayı bekleniyor."
+
+msgid "Кнопка устарела."
+msgstr "Düğmenin süresi doldu."
+
+msgid "Партнерский ранг изменен."
+msgstr "Ortaklık seviyesi değişti."
+
+#, python-brace-format
+msgid ""
+"<b>Партнерский ранг изменен</b>\n"
+"\n"
+"Ранг: {v0} → <b>{v1}</b>\n"
+"Доля нового дохода владельца: <b>{v2:.0f}%</b>\n"
+"Ранее начисленные суммы не изменились."
+msgstr ""
+"<b>Ortaklık seviyesi değişti</b>\n"
+"\n"
+"Seviye: {v0} → <b>{v1}</b>\n"
+"Sahibin yeni gelirinden pay: <b>{v2:.0f}%</b>\n"
+"Önceden biriken tutarlar değişmedi."
+
+#, python-brace-format
+msgid ""
+"✅ Средства дошли до получателя!\n"
+"Отправлено <b>{v0} {v1}</b>."
+msgstr ""
+"✅ Fonlar alıcıya ulaştı!\n"
+"<b>{v0} {v1}</b> gönderildi."
+
+#, python-brace-format
+msgid ""
+"\n"
+"(газ сети {v0} USDT удержан)"
+msgstr ""
+"\n"
+"({v0} USDT ağ gas ücreti kesildi)"
+
+#, python-brace-format
+msgid ""
+"⚠️ Не удалось отправить выплату <b>{v0} {v1}</b>. Средства не списаны — начисления возвращены на "
+"баланс, попробуйте позже."
+msgstr ""
+"⚠️ <b>{v0} {v1}</b> ödemesi gönderilemedi. Fon kesilmedi; tahakkuklar bakiyenize geri eklendi. "
+"Daha sonra deneyin."
+
+#, python-brace-format
+msgid "Манки {v0}"
+msgstr "Monkey {v0}"
+
+msgid "Что-то пошло не так. Попробуйте /start и повторите."
+msgstr "Bir sorun oluştu. /start ile yeniden deneyin."
+
+msgid "Необработанная ошибка"
+msgstr "İşlenmeyen hata"
+
+msgid "Слишком часто — подождите немного."
+msgstr "Çok sık istek gönderiyorsunuz. Biraz bekleyin."
+
+msgid "🚫 Ваш аккаунт заблокирован. Обратитесь к администратору."
+msgstr "🚫 Hesabınız engellendi. Yöneticiyle iletişime geçin."
+
+#, python-brace-format
+msgid "UID должен быть длиной от {v0} до {v1} символов."
+msgstr "UID {v0} ile {v1} karakter arasında olmalıdır."
+
+msgid "UID может содержать только латинские буквы и цифры."
+msgstr "UID yalnızca Latin harfleri ve rakam içerebilir."
+
+msgid "Отправлено"
+msgstr "Gönderildi"
+
+msgid "Открыт кейс"
+msgstr "Talep açıldı"
+
+msgid "Требуется ответ"
+msgstr "Yanıt gerekli"
+
+msgid "Кейс закрыт"
+msgstr "Talep kapatıldı"
+
+msgid "20% · для китов индивидуальные условия"
+msgstr "%20 · yüksek hacimli kullanıcılar için özel koşullar"
+
+msgid "бонус 12% для команды каждую неделю + 3% к поинтам на TGE"
+msgstr "takım için haftalık %12 bonus + TGE puanlarında %3 bonus"
+
+msgid "7% · для китов индивидуальные условия"
+msgstr "%7 · yüksek hacimli kullanıcılar için özel koşullar"
+
+msgid "Не удалось создать ссылку. Пожалуйста, попробуйте позже."
+msgstr "Bağlantı oluşturulamadı. Daha sonra deneyin."
+
+msgid "Сначала откройте личный кабинет через /start."
+msgstr "Önce /start ile hesabınızı açın."
+
+msgid "Реферальная программа для этого аккаунта недоступна."
+msgstr "Bu hesap için referans programı kullanılamıyor."
+
+msgid "Выберите язык / Choose language"
+msgstr "Dil seçin / Choose language"
+
+msgid "Язык сохранен."
+msgstr "Dil kaydedildi."
+
+msgid "Язык / Language"
+msgstr "Dil / Language"
+
+msgid "Код должен содержать от 5 до 32 латинских букв, цифр, символов _ или -."
+msgstr "Kod 5–32 Latin harfi, rakam, _ veya - içermelidir."
+
+msgid "Этот код зарезервирован. Пожалуйста, выберите другой."
+msgstr "Bu kod ayrılmış. Lütfen başka bir kod seçin."
+

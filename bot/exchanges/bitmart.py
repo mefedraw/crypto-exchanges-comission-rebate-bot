@@ -21,6 +21,7 @@ from bot.exchanges.base import (
     ExchangeApiError,
     ExchangeAuthError,
     ExchangeRateLimitError,
+    ReferralCheck,
 )
 from bot.exchanges.base_http import BaseHttpAdapter
 from bot.exchanges.registry import register
@@ -28,6 +29,12 @@ from bot.utils.dates import iter_windows, to_seconds
 from bot.utils.money import parse_decimal
 
 _PATH = "/contract/private/affiliate/rebate-list"
+# VERIFIED (live): a boolean "is this an invited user" check for a single customer id
+# (`cid`) — the cleanest membership signal of all exchanges. Confirmed against the
+# owner's real referrals: code 1000 + data.isInviteUser (true/false), and code 40025
+# "User does not exist" for an unknown id. All return HTTP 200.
+_INVITE_CHECK_PATH = "/contract/private/affiliate/invite-check"
+_INVALID_USER_CODE = "40025"  # VERIFIED (live): unknown cid -> "User does not exist".
 _PAGE_LIMIT = 50
 # VERIFIED (official BitMart Futures V2 docs): futures assets are USDT
 # (U-native), BTC and ETH (coin-native); rebate-list exposes one currency filter.
@@ -82,8 +89,7 @@ class BitmartAdapter(BaseHttpAdapter):
                 await self._collect_currency(uid, window_start, window_end, currency, result)
 
         result.settlement_note = (
-            "BitMart Futures: сумма рефбека по BTC/USDT/ETH за период "
-            "(по данным API)."
+            "BitMart Futures: сумма рефбека по BTC/USDT/ETH за период " "(по данным API)."
         )
         return result.finalize()
 
@@ -136,6 +142,108 @@ class BitmartAdapter(BaseHttpAdapter):
         # only when no detail rows came back, so we never double-count a page.
         if not records_seen and fallback_sum is not None and fallback_sum != Decimal(0):
             result.add_amount(currency, fallback_sum)
+
+    async def get_downline_total(self, date_from: datetime, date_to: datetime) -> Decimal | None:
+        """Whole-downline USDT rebate: the same ``rebate-list`` endpoint used by
+        :meth:`get_commission`, called WITHOUT ``user_id`` so BitMart returns every
+        referral's rows instead of one uid's (VERIFIED: the endpoint pages the full
+        affiliate list when no ``user_id`` filter is supplied — the same page shape
+        :meth:`_collect_currency` narrows with a uid). Only ``currency=USDT`` is
+        queried/summed per the base contract (:class:`ExchangeAdapter.get_downline_total`
+        is USDT-only); a stray non-USDT row is filtered out defensively.
+        """
+        total = Decimal(0)
+        for window_start, window_end in iter_windows(
+            date_from.date(), date_to.date(), self.max_window_days
+        ):
+            total += await self._collect_downline_window(window_start, window_end)
+        return total
+
+    async def _collect_downline_window(
+        self, window_start: datetime, window_end: datetime
+    ) -> Decimal:
+        page = 1
+        records_seen = False
+        fallback_sum: Decimal | None = None
+        total = Decimal(0)
+
+        while True:
+            params: dict[str, object] = {
+                "page": page,
+                "size": _PAGE_LIMIT,
+                "currency": "USDT",
+                "rebate_start_time": to_seconds(window_start),
+                "rebate_end_time": to_seconds(window_end),
+            }
+            query = urlencode(params)
+            payload = await self._send(
+                "GET", f"{_PATH}?{query}", headers=self._headers(), log_path=_PATH
+            )
+            records, total_records, top_level_sum = self._extract_page(payload, "USDT")
+            if page == 1:
+                fallback_sum = top_level_sum
+            if records:
+                records_seen = True
+
+            for record in records:
+                asset_raw = self._first(record, _COIN_FIELDS) or "USDT"
+                if str(asset_raw).upper() != "USDT":
+                    continue  # defensive: currency filter already scopes to USDT
+                amount_raw = self._first(record, _AMOUNT_FIELDS)
+                if amount_raw is None:
+                    continue
+                total += self._parse_decimal(amount_raw)
+
+            if len(records) < _PAGE_LIMIT or (
+                total_records > 0 and page * _PAGE_LIMIT >= total_records
+            ):
+                break
+            page += 1
+
+        # Same fallback rule as get_commission: only trust the top-level sum when no
+        # detail rows came back, so a page's rows are never double-counted.
+        if not records_seen and fallback_sum is not None and fallback_sum != Decimal(0):
+            total += fallback_sum
+        return total
+
+    async def verify_referral(self, uid: str) -> ReferralCheck:
+        """Ask BitMart directly whether ``uid`` is an invited user.
+
+        VERIFIED (live), all as HTTP 200:
+        * code 1000 + ``data.isInviteUser`` true  -> CONFIRMED,
+        * code 1000 + ``data.isInviteUser`` false -> NOT_REFERRAL,
+        * code 40025 "User does not exist"         -> NOT_REFERRAL (unknown id, reject),
+        * any other code (auth/rate-limit/...)     -> UNVERIFIABLE (fail open).
+
+        Classifies the body directly rather than via ``_unwrap_payload`` (which
+        raises on every non-1000 code and would bury the 40025 reject signal).
+        """
+        query = urlencode({"cid": uid})
+        payload = await self._send(
+            "GET",
+            f"{_INVITE_CHECK_PATH}?{query}",
+            headers=self._headers(),
+            log_path=_INVITE_CHECK_PATH,
+        )
+        if not isinstance(payload, dict):
+            return ReferralCheck.UNVERIFIABLE
+        code = str(payload.get("code"))
+        if code == _INVALID_USER_CODE:
+            return ReferralCheck.NOT_REFERRAL  # unknown BitMart id — not the owner's referral
+        if code != "1000":
+            return ReferralCheck.UNVERIFIABLE  # auth/rate-limit/etc. — can't tell, don't block
+        data = payload.get("data")
+        is_invite = data.get("isInviteUser") if isinstance(data, dict) else None
+        if isinstance(is_invite, bool):
+            return ReferralCheck.CONFIRMED if is_invite else ReferralCheck.NOT_REFERRAL
+        # Some deployments echo strings ("true"/"false"); tolerate but stay safe.
+        if isinstance(is_invite, str):
+            return (
+                ReferralCheck.CONFIRMED
+                if is_invite.strip().lower() == "true"
+                else ReferralCheck.NOT_REFERRAL
+            )
+        return ReferralCheck.UNVERIFIABLE
 
     def _extract_page(
         self, payload: object, currency: str

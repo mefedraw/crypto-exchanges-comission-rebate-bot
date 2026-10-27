@@ -71,3 +71,18 @@ def test_encrypted_credentials_are_decrypted():
 def test_demo_mode_flag():
     assert make_settings(DEMO_MODE="true").demo_mode is True
     assert make_settings().demo_mode is False
+
+
+def test_accrual_interval_default_and_override():
+    assert make_settings().accrual_interval_seconds == 86400.0  # daily by default
+    assert make_settings(ACCRUAL_INTERVAL_SECONDS="21600").accrual_interval_seconds == 21600.0
+
+
+def test_credential_rotation_is_opt_in() -> None:
+    assert make_settings().credential_update_enabled is False
+    settings = make_settings(
+        CREDENTIAL_UPDATE_ENABLED="true",
+        CREDENTIAL_UPDATER_SOCKET="/run/private/updater.sock",
+    )
+    assert settings.credential_update_enabled is True
+    assert settings.credential_updater_socket == "/run/private/updater.sock"

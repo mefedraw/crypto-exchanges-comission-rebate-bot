@@ -1,0 +1,3 @@
+*.mo binary
+# Babel-generated catalogs conventionally end with a separator blank line.
+*.po whitespace=-blank-at-eof

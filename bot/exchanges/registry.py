@@ -38,6 +38,7 @@ def _load_adapter_modules() -> None:
     each adapter module imports :func:`register` from this module.
     """
     from bot.exchanges import (  # noqa: F401  (imported for registration side effects)
+        binance,
         bitget,
         bitmart,
         bybit,
@@ -45,6 +46,7 @@ def _load_adapter_modules() -> None:
         kucoin,
         mexc,
         okx,
+        toobit,
         weex,
     )
 
@@ -67,3 +69,35 @@ def build_adapters(settings: Settings) -> dict[str, ExchangeAdapter]:
         if factory is not None:
             adapters[code] = factory(creds, settings)
     return adapters
+
+
+def build_adapter(settings: Settings, code: str) -> ExchangeAdapter | None:
+    """Instantiate a single live adapter, or ``None`` if it isn't usable.
+
+    Cheaper than :func:`build_adapters` when only one exchange is needed (e.g. a
+    referral check): opens one httpx client instead of all of them. Returns ``None``
+    when the exchange has no credentials or no registered factory — the caller then
+    treats the check as unverifiable rather than failing.
+    """
+    if settings.demo_mode:
+        spec = next((s for s in EXCHANGE_SPECS if s.code == code), None)
+        return StubAdapter(spec.code, spec.label) if spec is not None else None
+
+    _load_adapter_modules()
+    creds = settings.available_exchanges.get(code)
+    factory = _FACTORIES.get(code)
+    if creds is None or factory is None:
+        return None
+    return factory(creds, settings)
+
+
+def build_adapter_with_credentials(
+    settings: Settings,
+    credentials: ExchangeCredentials,
+) -> ExchangeAdapter:
+    """Build one temporary live adapter from an explicit credential set."""
+    _load_adapter_modules()
+    factory = _FACTORIES.get(credentials.spec.code)
+    if factory is None:
+        raise ValueError(f"No adapter registered for {credentials.spec.code!r}.")
+    return factory(credentials, settings)

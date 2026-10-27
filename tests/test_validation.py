@@ -13,14 +13,14 @@ def test_validate_uid_ok():
 @pytest.mark.parametrize(
     "bad",
     [
-        "",            # empty
-        "ab",          # too short
-        "x" * 33,      # too long
-        "12 34",       # space
-        "12;34",       # injection char
-        "uid_1",       # underscore
-        "1/2",         # slash
-        "日本",         # non-ascii
+        "",  # empty
+        "ab",  # too short
+        "x" * 33,  # too long
+        "12 34",  # space
+        "12;34",  # injection char
+        "uid_1",  # underscore
+        "1/2",  # slash
+        "日本",  # non-ascii
     ],
 )
 def test_validate_uid_rejects(bad):

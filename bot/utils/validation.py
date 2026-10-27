@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import re
 
+from bot.i18n import gettext as tr
+
 _UID_PATTERN = re.compile(r"^[A-Za-z0-9]+$")
 _UID_MIN_LEN = 3
 _UID_MAX_LEN = 32
@@ -26,8 +28,10 @@ def validate_uid(raw: str) -> str:
     uid = raw.strip()
     if not (_UID_MIN_LEN <= len(uid) <= _UID_MAX_LEN):
         raise UidInputError(
-            f"UID должен быть длиной от {_UID_MIN_LEN} до {_UID_MAX_LEN} символов."
+            tr("UID должен быть длиной от {v0} до {v1} символов.").format(
+                v0=_UID_MIN_LEN, v1=_UID_MAX_LEN
+            )
         )
     if not _UID_PATTERN.match(uid):
-        raise UidInputError("UID может содержать только латинские буквы и цифры.")
+        raise UidInputError(tr("UID может содержать только латинские буквы и цифры."))
     return uid
