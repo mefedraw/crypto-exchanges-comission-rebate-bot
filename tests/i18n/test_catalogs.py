@@ -109,6 +109,14 @@ def test_menu_buttons_keep_callbacks_icons_and_fit_limits(locale, show_mnt):
         languages = keyboard().inline_keyboard
         assert [len(row) for row in languages] == [2, 2, 2, 2, 1]
         assert sum(b.text.startswith("✓ ") for row in languages for b in row) == 1
+        expected_flags = dict(
+            zip(LANGUAGES, ("🇷🇺", "🇬🇧", "🇺🇦", "🇨🇳", "🇹🇷", "🇮🇳", "🇹🇭", "🇻🇳"), strict=True)
+        )
+        buttons = [button for row in languages[:-1] for button in row]
+        for button, (code, name) in zip(buttons, LANGUAGES.items(), strict=True):
+            prefix = "✓ " if code == locale else ""
+            assert button.text == f"{prefix}{expected_flags[code]} {name}"
+            assert button.callback_data == f"lang:{code}"
 
 
 @pytest.mark.parametrize("locale", LANGUAGES)
