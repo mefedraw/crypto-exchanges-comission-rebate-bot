@@ -21,6 +21,17 @@ router = Router(name="language-settings")
 router.message.filter(F.chat.type == "private")
 router.callback_query.filter(F.message.chat.type == "private")
 
+LANGUAGE_FLAGS = {
+    "ru": "🇷🇺",
+    "en": "🇬🇧",
+    "uk": "🇺🇦",
+    "zh": "🇨🇳",
+    "tr": "🇹🇷",
+    "hi": "🇮🇳",
+    "th": "🇹🇭",
+    "vi": "🇻🇳",
+}
+
 
 class LanguageCB(CallbackData, prefix="lang"):
     code: str
@@ -30,7 +41,7 @@ def keyboard() -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     for code, name in LANGUAGES.items():
         b.button(
-            text=("✓ " if code == current_locale() else "") + name,
+            text=("✓ " if code == current_locale() else "") + f"{LANGUAGE_FLAGS[code]} {name}",
             callback_data=LanguageCB(code=code),
         )
     b.adjust(2)

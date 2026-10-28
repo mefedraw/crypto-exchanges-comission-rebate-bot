@@ -18,6 +18,8 @@ for unreleased work snapshots.
 
 ### Added
 
+- Added country flags beside all eight native language names in the language
+  selector, preserving locale callbacks, the selected marker and two-column layout.
 - Added persistent user language settings and seven additional UI languages:
   English, Ukrainian, Simplified Chinese, Turkish, Hindi, Thai, and Vietnamese.
 - Localized cabinet screens, support statuses, partner views and background
