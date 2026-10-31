@@ -18,6 +18,11 @@ for unreleased work snapshots.
 
 ### Added
 
+- Added durable normalized commission fetch snapshots with independent commits;
+  successful exchange responses survive user-level financial rollbacks and are
+  reused after restart. Failed accounts do not prevent collecting other accounts.
+- Kept financial settlement atomic and preserved existing rank/fee, settlement-lag,
+  multi-asset and finalized-entry rules; no error-to-zero fallback is introduced.
 - Added persistent user language settings and seven additional UI languages:
   English, Ukrainian, Simplified Chinese, Turkish, Hindi, Thai, and Vietnamese.
 - Localized cabinet screens, support statuses, partner views and background
