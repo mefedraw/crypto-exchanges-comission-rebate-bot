@@ -19,10 +19,11 @@ from decimal import Decimal, InvalidOperation
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from bot.accrual import fetches
 from bot.accrual import repository as repo
 from bot.accrual.adapters import AdapterProvider
 from bot.config import Settings, get_settings
-from bot.exchanges.base import ExchangeAdapter
+from bot.exchanges.base import CommissionResult, ExchangeAdapter, ExchangeApiError
 from bot.notifications import repository as notif_repo
 from bot.partners import rank_control
 from bot.payout.commission import effective_fee
@@ -109,6 +110,13 @@ class _AccountRef:
     exchange: str
     uid: str
     accrual_since: date
+
+
+@dataclass(frozen=True, slots=True)
+class _FetchedDay:
+    query_from: datetime
+    query_to: datetime
+    result: CommissionResult
 
 
 def _day_bounds_payout_tz(d: date) -> tuple[datetime, datetime]:
@@ -440,6 +448,50 @@ class AccrualWorker:
             await repo.save_downline_snapshot(session, payload)
             await session.commit()
 
+    async def _collect_user_results(
+        self,
+        accounts: list[_AccountRef],
+        start: date,
+        last_closed: date,
+        finalized: dict[int, dict[date, Decimal]],
+        gate_ends: dict[int, datetime | None],
+    ) -> dict[tuple[int, date], _FetchedDay]:
+        collected: dict[tuple[int, date], _FetchedDay] = {}
+        errors: list[ExchangeApiError] = []
+        for acc in accounts:
+            adapter = self._provider.get(acc.exchange)
+            previous_end = gate_ends.get(acc.id)
+            for day in iter_days(max(start, acc.accrual_since), last_closed):
+                if day in finalized[acc.id]:
+                    continue
+                query_start, query_end = _day_bounds_payout_tz(day)
+                if acc.exchange == "gate" and previous_end is not None:
+                    query_start = max(query_start, previous_end + timedelta(seconds=1))
+                if query_start > query_end:
+                    continue
+                try:
+                    result = await fetches.get_or_fetch(
+                        self._sm,
+                        adapter,
+                        account_id=acc.id,
+                        uid=acc.uid,
+                        day=day,
+                        query_from=query_start,
+                        query_to=query_end,
+                        now=self._now(),
+                    )
+                except ExchangeApiError as exc:
+                    errors.append(exc)
+                    # Do not hammer the remaining days of an unavailable account;
+                    # still collect all other accounts, irrespective of ordering.
+                    break
+                collected[(acc.id, day)] = _FetchedDay(query_start, query_end, result)
+                if acc.exchange == "gate":
+                    previous_end = query_end.astimezone(UTC).replace(microsecond=0)
+        if errors:
+            raise errors[0]
+        return collected
+
     async def _process_user(
         self,
         session: AsyncSession,
@@ -494,6 +546,9 @@ class AccrualWorker:
             for acc in accounts
             if acc.exchange == "gate"
         }
+        collected = await self._collect_user_results(
+            accounts, start, last_closed, finalized_by_acc, gate_query_ends
+        )
 
         override_pct, override_since = await repo.get_commission_override(session, user_id)
 
@@ -525,7 +580,6 @@ class AccrualWorker:
                 # Seed cumulative from rows already persisted earlier in this month.
                 cum_before = await repo.user_month_gross(session, user_id, m, d)
 
-            day_start, day_end = _day_bounds_payout_tz(d)
             # Per (account, asset): native amount, USDT-equivalent, fx rate applied.
             per_account: list[tuple[int, str, Decimal, Decimal, Decimal, int, str | None]] = []
             query_bounds_by_acc: dict[int, tuple[datetime, datetime]] = {}
@@ -542,22 +596,17 @@ class AccrualWorker:
                     day_amount += reused
                     continue
                 adapter = self._provider.get(acc.exchange)
-                query_start, query_end = day_start, day_end
+                fetched = collected.get((acc.id, d))
+                if fetched is None:
+                    continue
                 if acc.exchange == "gate":
-                    previous_end = gate_query_ends[acc.id]
-                    if previous_end is not None:
-                        query_start = max(query_start, previous_end + timedelta(seconds=1))
-                    if query_start > query_end:
-                        continue
                     # Preserve the old UTC coverage at cutover; never count its last
                     # eight hours again in the first UTC+8 day after deployment.
                     query_bounds_by_acc[acc.id] = (
-                        query_start.astimezone(UTC).replace(microsecond=0),
-                        query_end.astimezone(UTC).replace(microsecond=0),
+                        fetched.query_from.astimezone(UTC).replace(microsecond=0),
+                        fetched.query_to.astimezone(UTC).replace(microsecond=0),
                     )
-                result = await adapter.get_commission(acc.uid, query_start, query_end)
-                if acc.exchange == "gate":
-                    gate_query_ends[acc.id] = query_bounds_by_acc[acc.id][1]
+                result = fetched.result
 
                 # Sum same-asset lines first (an adapter may emit several lines per
                 # asset split by source, e.g. SPOT/FUTURES) so each asset freezes
