@@ -31,16 +31,12 @@ from bot.admin.keyboards import (
     user_controls_keyboard,
 )
 from bot.admin.states import AdminFlow
+from bot.admin.wallet_balance import build_bsc_balance_reader, build_mantle_balance_reader
 from bot.botui import panel
 from bot.botui import repository as botui_repo
 from bot.botui.repository import write_audit
 from bot.config import get_settings
 from bot.db.models.payouts import Payout
-from bot.executor.chain_web3 import (
-    Web3ChainClient,
-    build_chain_client,
-    build_mantle_chain_client,
-)
 from bot.payout.expiry import PAYOUT_TZ
 from bot.payout.rank_timing import month_start, next_month_start
 from bot.utils.money import format_2dp
@@ -263,33 +259,41 @@ async def show_wallet_balance(callback: CallbackQuery, state: FSMContext) -> Non
         await callback.answer()
         return
     settings = get_settings()
+    await callback.answer()
     lines = ["💰 <b>Баланс кошелька выплат</b>", ""]
-    bsc = build_chain_client(settings)
-    if isinstance(bsc, Web3ChainClient):
-        lines.append(f"Адрес: <code>{bsc.address}</code>\n")
-        try:
+    bsc = None
+    try:
+        bsc = build_bsc_balance_reader(settings)
+        if bsc is not None:
+            lines.append(f"Адрес: <code>{bsc.address}</code>\n")
             usdt = await bsc.usdt_balance()
             bnb = await bsc.native_balance()
             lines.append(
                 f"BSC — USDT: <b>{format_2dp(usdt)}</b>" if usdt is not None else "BSC — USDT: н/д"
             )
             lines.append(f"BSC — BNB (газ): {bnb:.6f}")
-        except Exception as exc:  # surface RPC failure, don't crash the panel
-            lines.append(f"BSC — ошибка чтения баланса ({type(exc).__name__})")
-    else:
-        lines.append("BSC/USDT-выплаты не настроены.")
-    mantle = build_mantle_chain_client(settings)
-    if isinstance(mantle, Web3ChainClient):
-        try:
+        else:
+            lines.append("BSC — не настроено чтение баланса.")
+    except Exception as exc:  # never expose RPC URLs or credentials
+        lines.append(f"BSC — ошибка чтения баланса ({type(exc).__name__})")
+    finally:
+        if bsc is not None:
+            await bsc.aclose()
+    mantle = None
+    try:
+        mantle = build_mantle_balance_reader(settings)
+        if mantle is not None:
             mnt = await mantle.native_balance()
             lines.append(f"Mantle — MNT (выплаты + газ): <b>{mnt:.6f}</b>")
-        except Exception as exc:  # surface RPC failure, don't crash the panel
-            lines.append(f"Mantle — ошибка чтения баланса ({type(exc).__name__})")
-    else:
-        lines.append("Mantle (MNT): выключено.")
+        else:
+            lines.append("Mantle — не настроено чтение баланса.")
+    except Exception as exc:  # never expose RPC URLs or credentials
+        lines.append(f"Mantle — ошибка чтения баланса ({type(exc).__name__})")
+    finally:
+        if mantle is not None:
+            await mantle.aclose()
     if isinstance(callback.message, Message):
         await panel.show(state, callback.message, "\n".join(lines), admin_back_keyboard())
-    await callback.answer()
 
 
 def _payout_summary(payout: Payout) -> str:

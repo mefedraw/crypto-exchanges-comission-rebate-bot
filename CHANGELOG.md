@@ -7,6 +7,13 @@ for unreleased work snapshots.
 
 ## [Unreleased]
 
+### Fixed
+
+- Read the admin payout-wallet balance using only its public address and RPC,
+  without requiring the executor-only private key in the Telegram bot.
+- Report missing balance-reader settings separately from payout availability,
+  isolate per-chain RPC errors and reject unexpected RPC chain IDs.
+
 ### Repository Synchronization
 
 - Restored the deployed application's source, PostgreSQL migrations, tests,
