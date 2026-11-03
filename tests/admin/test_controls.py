@@ -908,20 +908,17 @@ async def test_request_reassign_sets_state() -> None:
 
 @_async
 async def test_show_wallet_balance_renders_onchain_balances(monkeypatch) -> None:
-    from bot.executor.chain_web3 import Web3ChainClient
+    from bot.admin.wallet_balance import WalletBalanceReader
 
-    key = "0x" + "1" * 64
-    bsc = Web3ChainClient(
-        rpc_urls=["http://localhost:0"], private_key=key, usdt_contract="0x" + "0" * 40, chain_id=56
+    bsc = WalletBalanceReader(
+        rpc_url="http://localhost:0", address="0x" + "1" * 40, token="0x" + "0" * 40, chain_id=56
     )
     bsc.usdt_balance = AsyncMock(return_value=Decimal("1234.5"))
     bsc.native_balance = AsyncMock(return_value=Decimal("0.25"))
-    mantle = Web3ChainClient(
-        rpc_urls=["http://localhost:0"], private_key=key, usdt_contract=None, chain_id=5000
-    )
+    mantle = WalletBalanceReader(rpc_url="http://localhost:0", address=bsc.address, chain_id=5000)
     mantle.native_balance = AsyncMock(return_value=Decimal("24.4559"))
-    monkeypatch.setattr("bot.admin.router.build_chain_client", lambda s: bsc)
-    monkeypatch.setattr("bot.admin.router.build_mantle_chain_client", lambda s: mantle)
+    monkeypatch.setattr("bot.admin.router.build_bsc_balance_reader", lambda s: bsc)
+    monkeypatch.setattr("bot.admin.router.build_mantle_balance_reader", lambda s: mantle)
 
     cb = _callback(9820)
     await show_wallet_balance(cb, _ctx(9999))  # type: ignore[arg-type]
@@ -937,14 +934,50 @@ async def test_show_wallet_balance_renders_onchain_balances(monkeypatch) -> None
 
 @_async
 async def test_show_wallet_balance_reports_disabled(monkeypatch) -> None:
-    from bot.executor.chain import MockChainClient
-
-    monkeypatch.setattr("bot.admin.router.build_chain_client", lambda s: MockChainClient())
-    monkeypatch.setattr("bot.admin.router.build_mantle_chain_client", lambda s: None)
+    monkeypatch.setattr("bot.admin.router.build_bsc_balance_reader", lambda s: None)
+    monkeypatch.setattr("bot.admin.router.build_mantle_balance_reader", lambda s: None)
 
     cb = _callback(9821)
     await show_wallet_balance(cb, _ctx(9999))  # type: ignore[arg-type]
 
     text = cb.message.edit_text.await_args.args[0]
-    assert "не настроены" in text
-    assert "выключено" in text
+    assert text.count("не настроено чтение баланса") == 2
+
+
+@_async
+async def test_wallet_balance_isolates_rpc_failure_and_closes(monkeypatch) -> None:
+    bsc = SimpleNamespace(
+        address="0x" + "1" * 40,
+        usdt_balance=AsyncMock(side_effect=TimeoutError("secret RPC credential")),
+        native_balance=AsyncMock(),
+        aclose=AsyncMock(),
+    )
+    mantle = SimpleNamespace(
+        native_balance=AsyncMock(return_value=Decimal("2.5")), aclose=AsyncMock()
+    )
+    monkeypatch.setattr("bot.admin.router.build_bsc_balance_reader", lambda s: bsc)
+    monkeypatch.setattr("bot.admin.router.build_mantle_balance_reader", lambda s: mantle)
+    cb = _callback(9822)
+    await show_wallet_balance(cb, _ctx(9999))  # type: ignore[arg-type]
+    text = cb.message.edit_text.await_args.args[0]
+    assert "TimeoutError" in text
+    assert "secret RPC credential" not in text
+    assert "2.500000" in text
+    bsc.aclose.assert_awaited_once()
+    mantle.aclose.assert_awaited_once()
+    cb.answer.assert_awaited_once()
+
+
+@_async
+async def test_wallet_balance_handles_invalid_public_settings(monkeypatch) -> None:
+    def invalid(settings):
+        raise ValueError("private endpoint detail")
+
+    monkeypatch.setattr("bot.admin.router.build_bsc_balance_reader", invalid)
+    monkeypatch.setattr("bot.admin.router.build_mantle_balance_reader", lambda s: None)
+    cb = _callback(9823)
+    await show_wallet_balance(cb, _ctx(9999))  # type: ignore[arg-type]
+    text = cb.message.edit_text.await_args.args[0]
+    assert "ValueError" in text
+    assert "private endpoint detail" not in text
+    assert "Mantle" in text
