@@ -34,8 +34,8 @@ crypto exchanges by `uid` and date range, to help compute payouts.
 > "to be paid" amount. Each result carries a disclaimer; for Bybit (and any
 > discrepancy) reconcile against the partner web portal.
 
-Supported exchanges (8): **Gate, KuCoin, MEXC, Bitget, BitMart, OKX, Bybit, WEEX**.
-(Toobit is not supported — no affiliate API.)
+Registered adapters: **Gate, KuCoin, MEXC, Bitget, OKX, Bybit, WEEX, Toobit, Binance**.
+BitMart has been removed. MEXC and Bitget can stay configured while administratively paused.
 
 ## Stack
 
@@ -62,9 +62,11 @@ All configuration comes from the environment (see [.env.example](.env.example)).
   silently ignored.
 - `MASTER_KEY` — optional Fernet key. When set, exchange credentials are treated
   as encrypted tokens and decrypted in memory at runtime.
-- `<EXCHANGE>_API_KEY` / `_API_SECRET` / `_API_PASSPHRASE` — per exchange. BitMart
-  futures affiliate endpoints currently need only `BITMART_API_KEY`. Leave an
+- `<EXCHANGE>_API_KEY` / `_API_SECRET` / `_API_PASSPHRASE` — per exchange. Leave an
   exchange blank to skip it; only sufficiently credentialed exchanges are registered.
+- `DISABLED_EXCHANGES` — comma-separated codes to pause (for example `mexc,bitget`).
+  Stops automatic API calls and new UID bindings, without deleting credentials,
+  existing UIDs or financial history. See [exchange pauses](docs/exchange-pauses.md).
 
 ### Preparing encrypted secrets
 

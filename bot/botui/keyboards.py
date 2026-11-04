@@ -10,7 +10,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.botui.referrals_catalog import REFERRALS
-from bot.config import EXCHANGE_SPECS
+from bot.config import EXCHANGE_SPECS, RETIRED_EXCHANGES, get_settings
 from bot.db.models.identity import ExchangeAccount
 from bot.i18n import gettext as tr
 
@@ -109,6 +109,8 @@ def menu_back_keyboard() -> InlineKeyboardMarkup:
 def _exchange_choice_builder() -> InlineKeyboardBuilder:
     b = InlineKeyboardBuilder()
     for spec in EXCHANGE_SPECS:
+        if not get_settings().exchange_enabled(spec.code):
+            continue
         b.button(text=spec.label, callback_data=UidExchangeCB(code=spec.code))
     b.adjust(2)
     return b
@@ -121,6 +123,8 @@ def uid_exchange_keyboard() -> InlineKeyboardMarkup:
 def uid_list_keyboard(accounts: Sequence[ExchangeAccount]) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     for account in accounts:
+        if account.exchange in RETIRED_EXCHANGES:
+            continue
         b.button(
             text=f"❌ {account.exchange}: {account.uid}",
             callback_data=UidRemoveCB(account_id=account.id),

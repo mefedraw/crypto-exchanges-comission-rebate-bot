@@ -28,7 +28,7 @@ from bot.botui.keyboards import (
     uid_remove_confirm_keyboard,
 )
 from bot.botui.states import UidFlow
-from bot.config import get_settings
+from bot.config import RETIRED_EXCHANGES, SPEC_BY_CODE, get_settings
 from bot.db.models.identity import ExchangeAccount
 from bot.exchanges.base import ReferralCheck
 from bot.i18n import gettext as tr
@@ -37,10 +37,16 @@ router = Router(name="botui-accounts")
 
 
 def _format_list(accounts: list[ExchangeAccount], header: str = "") -> str:
+    accounts = [a for a in accounts if a.exchange not in RETIRED_EXCHANGES]
     if not accounts:
         body = tr("У вас пока нет привязанных UID.\nВыберите биржу, чтобы добавить:")
     else:
-        lines = [f"• {a.exchange}: {a.uid}" for a in accounts]
+        settings = get_settings()
+        lines = [
+            f"• {a.exchange}: {a.uid}"
+            + (tr(" (в ожидании)") if a.exchange in settings.disabled_exchanges else "")
+            for a in accounts
+        ]
         body = tr("Ваши UID:\n") + "\n".join(lines) + tr("\n\nВыберите биржу, чтобы добавить ещё:")
     return header + body
 
@@ -88,6 +94,12 @@ async def list_uids(callback: CallbackQuery, state: FSMContext, session: AsyncSe
 async def choose_exchange(
     callback: CallbackQuery, callback_data: UidExchangeCB, state: FSMContext
 ) -> None:
+    if callback_data.code not in SPEC_BY_CODE:
+        await callback.answer(tr("Неизвестная биржа."), show_alert=True)
+        return
+    if not get_settings().exchange_enabled(callback_data.code):
+        await callback.answer(tr(" (в ожидании)").strip(" ()"), show_alert=True)
+        return
     await state.update_data(exchange=callback_data.code)
     await state.set_state(UidFlow.waiting_uid)
     if isinstance(callback.message, Message):

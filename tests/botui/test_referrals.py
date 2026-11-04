@@ -78,7 +78,7 @@ def test_binance_in_catalog_with_ref_code() -> None:
 
 def test_catalog_has_all_expected_exchanges() -> None:
     names = {e.name for e in REFERRALS}
-    for expected in ("Bybit", "Bitget", "Gate", "OKX", "Mexc", "Kucoin", "Bitmart", "Weex"):
+    for expected in ("Bybit", "Bitget", "Gate", "OKX", "Mexc", "Kucoin", "Weex"):
         assert expected in names
 
 

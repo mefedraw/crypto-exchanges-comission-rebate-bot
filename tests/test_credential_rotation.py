@@ -72,17 +72,8 @@ def test_parse_complete_bundle_and_reject_whitespace() -> None:
         parse_credential_message(SPEC_BY_CODE["gate"], "key")
 
 
-def test_bitmart_accepts_only_key_and_encrypts_complete_env() -> None:
-    master_key = Fernet.generate_key().decode()
-    cipher = SecretCipher(master_key)
-    bundle = parse_credential_message(SPEC_BY_CODE["bitmart"], "key")
-
-    encrypted = bundle.encrypted_env(cipher)
-
-    assert set(encrypted) == {"BITMART_API_KEY", "BITMART_API_SECRET"}
-    assert cipher.decrypt(encrypted["BITMART_API_KEY"]) == "key"
-    assert cipher.decrypt(encrypted["BITMART_API_SECRET"]) == ""
-    assert "key" not in encrypted.values()
+def test_bitmart_is_not_available_for_credential_rotation() -> None:
+    assert "bitmart" not in SPEC_BY_CODE
 
 
 async def test_rotate_validates_before_persisting_encrypted_values(monkeypatch) -> None:

@@ -18,7 +18,6 @@ from bot.exchanges.base import (
 )
 from bot.exchanges.binance import BinanceAdapter
 from bot.exchanges.bitget import BitgetAdapter
-from bot.exchanges.bitmart import BitmartAdapter
 from bot.exchanges.bybit import BybitAdapter
 from bot.exchanges.gate import GateAdapter
 from bot.exchanges.kucoin import KucoinAdapter
@@ -626,74 +625,6 @@ async def test_bitget_shifts_window_to_utc8(httpx_mock):
     assert qs["startTime"][0] == "1777564800000"  # 01.05 00:00 UTC+8
 
 
-async def test_bitmart_sums_futures_rebate_by_three_currencies(httpx_mock):
-    httpx_mock.add_response(
-        json={
-            "total": 1,
-            "size": 50,
-            "page": 1,
-            "usdt_rebate_sum": "12.5",
-            "rebate_detail_page_data": [
-                {
-                    "rebate_coin": "USDT",
-                    "trade_user_id": 123,
-                    "total_rebate_amount": "12.5",
-                }
-            ],
-        }
-    )
-    httpx_mock.add_response(
-        json={
-            "total": 1,
-            "size": 50,
-            "page": 1,
-            "btc_rebate_sum": "0.001",
-            "rebate_detail_page_data": [
-                {
-                    "rebate_coin": "BTC",
-                    "trade_user_id": 123,
-                    "total_rebate_amount": "0.001",
-                }
-            ],
-        }
-    )
-    httpx_mock.add_response(
-        json={
-            "total": 0,
-            "size": 50,
-            "page": 1,
-            "eth_rebate_sum": "0",
-            "rebate_detail_page_data": [],
-        }
-    )
-    adapter = BitmartAdapter(_creds("bitmart"), make_settings())
-    result = await adapter.get_commission("123", day_start(_DAY), day_end(_DAY))
-    await adapter.aclose()
-
-    assert {line.asset: line.amount for line in result.lines} == {
-        "BTC": Decimal("0.001"),
-        "USDT": Decimal("12.5"),
-    }
-    assert result.raw_records_count == 2
-    assert "BTC/USDT/ETH" in (result.settlement_note or "")
-
-
-async def test_bitmart_keyed_request_uses_api_key_only(httpx_mock):
-    for _ in range(3):
-        httpx_mock.add_response(json={"total": 0, "rebate_detail_page_data": []})
-    adapter = BitmartAdapter(_creds("bitmart"), make_settings())
-    await adapter.get_commission("123", day_start(_DAY), day_end(_DAY))
-    await adapter.aclose()
-
-    request = httpx_mock.get_requests()[0]
-    qs = parse_qs(urlparse(str(request.url)).query)
-    assert request.headers["X-BM-KEY"] == "api-key"
-    assert "X-BM-SIGN" not in request.headers
-    assert qs["user_id"][0] == "123"
-    assert qs["currency"][0] == "USDT"
-    assert qs["rebate_start_time"][0] == str(int(day_start(_DAY).timestamp()))
-
-
 async def test_auth_error_mapped(httpx_mock):
     httpx_mock.add_response(status_code=401)
     adapter = GateAdapter(_creds("gate"), make_settings(HTTP_MAX_RETRIES="0"))
@@ -717,7 +648,6 @@ def test_demo_mode_builds_all_stub_adapters():
     adapters = build_adapters(make_settings(DEMO_MODE="true"))
     assert set(adapters) == {
         "bitget",
-        "bitmart",
         "bybit",
         "gate",
         "kucoin",
