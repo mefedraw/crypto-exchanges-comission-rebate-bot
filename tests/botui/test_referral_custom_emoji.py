@@ -28,7 +28,7 @@ PACK_ICONS = {
 
 def test_all_icons_are_from_the_verified_pack_and_have_matching_fallbacks():
     assert EMOJI_PACK == "whalesincryptoio"
-    assert len(REFERRALS) == 22
+    assert len(REFERRALS) == 21
     assert {e.icon_custom_emoji_id for e in REFERRALS} == set(PACK_ICONS)
     for entry in REFERRALS:
         assert entry.icon_emoji == PACK_ICONS[entry.icon_custom_emoji_id]

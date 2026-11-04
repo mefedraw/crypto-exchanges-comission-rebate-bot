@@ -121,6 +121,8 @@ async def add_uid(
     stranger's uid earns nothing anyway and we must not block on a weak API)."""
     if exchange not in SPEC_BY_CODE:
         raise UidError(tr("Неизвестная биржа."))
+    if not get_settings().exchange_enabled(exchange):
+        raise UidError(tr(" (в ожидании)").strip(" ()"))
     uid = uid.strip()
     if not _UID_RE.match(uid):
         raise UidError(tr("UID: только латиница и цифры, до 64 символов."))

@@ -44,11 +44,9 @@ def test_available_exchanges_with_passphrase():
     assert creds.passphrase is not None
 
 
-def test_bitmart_requires_only_api_key():
+def test_removed_bitmart_credentials_do_not_register_an_exchange():
     s = make_settings(BITMART_API_KEY="k")
-    creds = s.available_exchanges["bitmart"]
-    assert creds.api_key.get_secret_value() == "k"
-    assert creds.api_secret.get_secret_value() == ""
+    assert "bitmart" not in s.available_exchanges
 
 
 def test_encrypted_credentials_are_decrypted():

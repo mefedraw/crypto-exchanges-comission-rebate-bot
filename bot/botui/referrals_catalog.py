@@ -1,7 +1,7 @@
 # bot/botui/referrals_catalog.py
 """Static catalog of the owner's exchange referral links + parsed ref codes.
 
-Separate from ``EXCHANGE_SPECS`` (the 8 accrual-supported exchanges): this is a
+Separate from ``EXCHANGE_SPECS`` (the accrual-supported exchanges): this is a
 share list the owner pulls up in-bot to grab a link or paste a ref code when
 registering through an exchange app. Each entry's ``ref_code`` is the value
 parsed out of its ``url``; ``tests/botui/test_referrals.py`` asserts the code
@@ -105,9 +105,6 @@ REFERRALS: tuple[ReferralEntry, ...] = (
         "70%",
         icon_custom_emoji_id="5402079538421212517",
         icon_emoji="📈",
-    ),
-    ReferralEntry(
-        "bitmart", "🤑", "Bitmart", "https://www.bitmart.com/invite/c5X6VH/en-US", "c5X6VH", "75%"
     ),
     ReferralEntry(
         "weex", "🤩", "Weex", "https://www.weex.com/en/register?vipCode=wzsu", "wzsu", "70%"

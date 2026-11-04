@@ -16,6 +16,7 @@ from bot.db.models.ledger import RankHistory, RebateAccrual
 from bot.db.models.ops import Notification
 from bot.exchanges.base import CommissionResult, ExchangeAdapter
 from bot.notifications import repository as notif_repo
+from tests.conftest import make_settings
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -390,3 +391,118 @@ async def test_finalized_rows_not_repolled_or_overwritten(sessionmaker):
 
     assert frozen_after == frozen_before  # ahead account's frozen rows untouched
     assert len(lagging_rows) == 12  # July 20..31 inclusive, newly polled
+
+
+@pytest.mark.parametrize("paused", ["mexc", "bitget", "bitmart"])
+async def test_paused_exchange_does_not_block_same_user_or_create_zero(sessionmaker, paused):
+    since = date(2026, 7, 10)
+    user_id = 99010 + ("mexc", "bitget", "bitmart").index(paused)
+    paused_id = await _seed_user_account(sessionmaker, user_id, since, exchange=paused)
+    active_id = await _seed_account(sessionmaker, user_id, "weex", since)
+    worker = AccrualWorker(
+        sessionmaker,
+        MappingAdapterProvider({"weex": FakeAdapter({since: Decimal("50")})}),
+        now=lambda: _now_at(date(2026, 7, 11)),
+        settings=make_settings(DISABLED_EXCHANGES="mexc,bitget"),
+    )
+    await worker.run_cycle()
+    async with sessionmaker() as session:
+        rows = (
+            await session.scalars(select(RebateAccrual).where(RebateAccrual.user_id == user_id))
+        ).all()
+        assert [(r.account_id, r.amount_usdt) for r in rows] == [(active_id, Decimal("50"))]
+        assert await acc_repo.last_finalized_day(session, paused_id) is None
+        account = await session.get(ExchangeAccount, paused_id)
+        assert account.status == "active" and account.accrual_since == since
+
+
+async def test_fully_paused_user_needs_no_adapter_and_produces_no_alert(sessionmaker):
+    paused_id = await _seed_user_account(sessionmaker, 99002, date(2026, 7, 10), exchange="mexc")
+    worker = AccrualWorker(
+        sessionmaker,
+        MappingAdapterProvider({}),
+        now=lambda: _now_at(date(2026, 7, 11)),
+        developer_id=123,
+        settings=make_settings(DISABLED_EXCHANGES="mexc,bitget"),
+    )
+    await worker.run_cycle()
+    async with sessionmaker() as session:
+        assert await acc_repo.last_finalized_day(session, paused_id) is None
+        notifications = (await session.scalars(select(Notification))).all()
+        assert not any(n.payload.get("detail", "").startswith("user 99002:") for n in notifications)
+
+
+async def test_resume_backfills_paused_history_without_rewriting_sibling(sessionmaker):
+    since = date(2026, 7, 10)
+    paused_id = await _seed_user_account(sessionmaker, 99003, since, exchange="mexc")
+    active_id = await _seed_account(sessionmaker, 99003, "weex", since)
+    enabled = FakeAdapter({since: Decimal("50")})
+    first = AccrualWorker(
+        sessionmaker,
+        MappingAdapterProvider({"weex": enabled}),
+        now=lambda: _now_at(date(2026, 7, 11)),
+        settings=make_settings(DISABLED_EXCHANGES="mexc"),
+    )
+    await first.run_cycle()
+    async with sessionmaker() as session:
+        row = (
+            await session.scalars(
+                select(RebateAccrual).where(RebateAccrual.account_id == active_id)
+            )
+        ).one()
+        before = (row.id, row.amount_usdt, row.net_usdt, row.fee_pct, row.fetched_at)
+    resumed = AccrualWorker(
+        sessionmaker,
+        MappingAdapterProvider(
+            {"weex": RaisingAdapter(), "mexc": FakeAdapter({since: Decimal("20")})}
+        ),
+        now=lambda: _now_at(date(2026, 7, 11)),
+        settings=make_settings(),
+    )
+    await resumed.run_cycle()
+    async with sessionmaker() as session:
+        row = (
+            await session.scalars(
+                select(RebateAccrual).where(RebateAccrual.account_id == active_id)
+            )
+        ).one()
+        assert (row.id, row.amount_usdt, row.net_usdt, row.fee_pct, row.fetched_at) == before
+        restored = (
+            await session.scalars(
+                select(RebateAccrual).where(RebateAccrual.account_id == paused_id)
+            )
+        ).one()
+        assert restored.accrual_date == since and restored.amount_usdt == Decimal("20")
+
+
+async def test_paused_finalized_history_still_contributes_to_daily_rank(sessionmaker):
+    since = date(2026, 7, 10)
+    paused_id = await _seed_user_account(sessionmaker, 99004, since, exchange="mexc")
+    first = AccrualWorker(
+        sessionmaker,
+        MappingAdapterProvider({"mexc": FakeAdapter({since: Decimal("150")})}),
+        now=lambda: _now_at(date(2026, 7, 11)),
+        settings=make_settings(),
+    )
+    await first.run_cycle()
+    active_id = await _seed_account(sessionmaker, 99004, "weex", since)
+    second = AccrualWorker(
+        sessionmaker,
+        MappingAdapterProvider(
+            {"weex": FakeAdapter({since: Decimal("10"), date(2026, 7, 11): Decimal("20")})}
+        ),
+        now=lambda: _now_at(date(2026, 7, 12)),
+        settings=make_settings(DISABLED_EXCHANGES="mexc"),
+    )
+    await second.run_cycle()
+    async with sessionmaker() as session:
+        rows = (
+            await session.scalars(
+                select(RebateAccrual)
+                .where(RebateAccrual.account_id == active_id)
+                .order_by(RebateAccrual.accrual_date)
+            )
+        ).all()
+        assert rows[1].effective_rank == 2
+        assert rows[1].fee_pct == Decimal("0.07")
+        assert await acc_repo.last_finalized_day(session, paused_id) == since

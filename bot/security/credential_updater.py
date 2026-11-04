@@ -36,7 +36,6 @@ _FIELDS_BY_EXCHANGE: dict[str, frozenset[str]] = {
     "kucoin": frozenset({"KUCOIN_API_KEY", "KUCOIN_API_SECRET", "KUCOIN_API_PASSPHRASE"}),
     "mexc": frozenset({"MEXC_API_KEY", "MEXC_API_SECRET"}),
     "bitget": frozenset({"BITGET_API_KEY", "BITGET_API_SECRET", "BITGET_API_PASSPHRASE"}),
-    "bitmart": frozenset({"BITMART_API_KEY", "BITMART_API_SECRET"}),
     "okx": frozenset({"OKX_API_KEY", "OKX_API_SECRET", "OKX_API_PASSPHRASE"}),
     "bybit": frozenset({"BYBIT_API_KEY", "BYBIT_API_SECRET"}),
     "weex": frozenset({"WEEX_API_KEY", "WEEX_API_SECRET", "WEEX_API_PASSPHRASE"}),

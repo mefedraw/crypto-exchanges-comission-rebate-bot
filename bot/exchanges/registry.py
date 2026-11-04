@@ -40,7 +40,6 @@ def _load_adapter_modules() -> None:
     from bot.exchanges import (  # noqa: F401  (imported for registration side effects)
         binance,
         bitget,
-        bitmart,
         bybit,
         gate,
         kucoin,
@@ -59,7 +58,11 @@ def build_adapters(settings: Settings) -> dict[str, ExchangeAdapter]:
     registered factory.
     """
     if settings.demo_mode:
-        return {spec.code: StubAdapter(spec.code, spec.label) for spec in EXCHANGE_SPECS}
+        return {
+            spec.code: StubAdapter(spec.code, spec.label)
+            for spec in EXCHANGE_SPECS
+            if settings.exchange_enabled(spec.code)
+        }
 
     _load_adapter_modules()
 
@@ -79,6 +82,8 @@ def build_adapter(settings: Settings, code: str) -> ExchangeAdapter | None:
     when the exchange has no credentials or no registered factory — the caller then
     treats the check as unverifiable rather than failing.
     """
+    if not settings.exchange_enabled(code):
+        return None
     if settings.demo_mode:
         spec = next((s for s in EXCHANGE_SPECS if s.code == code), None)
         return StubAdapter(spec.code, spec.label) if spec is not None else None

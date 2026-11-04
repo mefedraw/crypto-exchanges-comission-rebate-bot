@@ -14,7 +14,6 @@ from pydantic import SecretStr
 from bot.config import SPEC_BY_CODE, ExchangeCredentials
 from bot.exchanges.base import ExchangeApiError, ReferralCheck
 from bot.exchanges.bitget import BitgetAdapter
-from bot.exchanges.bitmart import BitmartAdapter
 from bot.exchanges.bybit import BybitAdapter
 from bot.exchanges.gate import GateAdapter
 from bot.exchanges.kucoin import KucoinAdapter
@@ -89,44 +88,6 @@ async def test_bitget_rejects_when_absent(httpx_mock):
     httpx_mock.add_response(json={"code": "00000", "data": []})
     adapter = BitgetAdapter(_creds("bitget", passphrase=True), make_settings())
     assert await adapter.verify_referral("777") is ReferralCheck.NOT_REFERRAL
-    await adapter.aclose()
-
-
-# ------------------------------------------------------------- BitMart (hard)
-async def test_bitmart_confirms_via_boolean(httpx_mock):
-    httpx_mock.add_response(json={"code": "1000", "message": "OK", "data": {"isInviteUser": True}})
-    adapter = BitmartAdapter(_creds("bitmart"), make_settings())
-    assert await adapter.verify_referral("42") is ReferralCheck.CONFIRMED
-    await adapter.aclose()
-
-
-async def test_bitmart_rejects_via_boolean(httpx_mock):
-    httpx_mock.add_response(json={"code": "1000", "message": "OK", "data": {"isInviteUser": False}})
-    adapter = BitmartAdapter(_creds("bitmart"), make_settings())
-    assert await adapter.verify_referral("42") is ReferralCheck.NOT_REFERRAL
-    await adapter.aclose()
-
-
-async def test_bitmart_rejects_unknown_user_40025(httpx_mock):
-    # VERIFIED (live): an unknown cid -> code 40025 "User does not exist" (HTTP 200) -> reject.
-    httpx_mock.add_response(
-        json={
-            "code": 40025,
-            "errno": "invalidUserId",
-            "msg": "User does not exist",
-            "success": False,
-        }
-    )
-    adapter = BitmartAdapter(_creds("bitmart"), make_settings())
-    assert await adapter.verify_referral("3066862172") is ReferralCheck.NOT_REFERRAL
-    await adapter.aclose()
-
-
-async def test_bitmart_unverifiable_on_other_business_code(httpx_mock):
-    # An auth/other business code fails open (never a false reject).
-    httpx_mock.add_response(json={"code": "30001", "message": "signature error", "success": False})
-    adapter = BitmartAdapter(_creds("bitmart"), make_settings())
-    assert await adapter.verify_referral("42") is ReferralCheck.UNVERIFIABLE
     await adapter.aclose()
 
 

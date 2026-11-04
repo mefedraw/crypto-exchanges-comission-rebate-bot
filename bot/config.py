@@ -41,7 +41,6 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
     ExchangeSpec("kucoin", "KuCoin", requires_passphrase=True),
     ExchangeSpec("mexc", "MEXC"),
     ExchangeSpec("bitget", "Bitget", requires_passphrase=True),
-    ExchangeSpec("bitmart", "BitMart", requires_secret=False),
     ExchangeSpec("okx", "OKX", requires_passphrase=True),
     ExchangeSpec("bybit", "Bybit"),
     ExchangeSpec("weex", "WEEX", requires_passphrase=True),
@@ -50,6 +49,7 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
 )
 
 SPEC_BY_CODE: dict[str, ExchangeSpec] = {spec.code: spec for spec in EXCHANGE_SPECS}
+RETIRED_EXCHANGES = frozenset({"bitmart"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,8 +199,22 @@ class Settings(BaseSettings):
     bitget_api_secret: SecretStr | None = Field(default=None, alias="BITGET_API_SECRET")
     bitget_api_passphrase: SecretStr | None = Field(default=None, alias="BITGET_API_PASSPHRASE")
 
-    bitmart_api_key: SecretStr | None = Field(default=None, alias="BITMART_API_KEY")
-    bitmart_api_secret: SecretStr | None = Field(default=None, alias="BITMART_API_SECRET")
+    disabled_exchanges_raw: str = Field(default="", alias="DISABLED_EXCHANGES")
+
+    @field_validator("disabled_exchanges_raw")
+    @classmethod
+    def _validate_disabled_exchanges(cls, value: str) -> str:
+        codes = {code.strip().lower() for code in value.split(",") if code.strip()}
+        if codes - SPEC_BY_CODE.keys():
+            raise ValueError("DISABLED_EXCHANGES contains an unknown exchange")
+        return ",".join(sorted(codes))
+
+    @property
+    def disabled_exchanges(self) -> frozenset[str]:
+        return frozenset(filter(None, self.disabled_exchanges_raw.split(",")))
+
+    def exchange_enabled(self, code: str) -> bool:
+        return code in SPEC_BY_CODE and code not in self.disabled_exchanges
 
     bybit_api_key: SecretStr | None = Field(default=None, alias="BYBIT_API_KEY")
     bybit_api_secret: SecretStr | None = Field(default=None, alias="BYBIT_API_SECRET")
@@ -325,6 +339,8 @@ class Settings(BaseSettings):
         """Exchanges with a full credential set, keyed by code, in display order."""
         result: dict[str, ExchangeCredentials] = {}
         for spec in EXCHANGE_SPECS:
+            if not self.exchange_enabled(spec.code):
+                continue
             creds = self._build_credentials(spec)
             if creds is not None:
                 result[spec.code] = creds

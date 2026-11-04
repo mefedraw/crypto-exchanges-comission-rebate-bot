@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bot.accrual import repository as repo
 from bot.accrual.adapters import AdapterProvider
-from bot.config import Settings, get_settings
+from bot.config import RETIRED_EXCHANGES, Settings, get_settings
 from bot.exchanges.base import ExchangeAdapter
 from bot.notifications import repository as notif_repo
 from bot.partners import rank_control
@@ -143,6 +143,7 @@ class AccrualWorker:
         settings = settings or get_settings()
         self._epoch = settings.rebate_epoch
         self._mnt_enabled = settings.mnt_enabled
+        self._disabled_exchanges = settings.disabled_exchanges | RETIRED_EXCHANGES
         # Exchanges with configured credentials — iterated to refresh the
         # whole-downline rebate snapshot at the end of each cycle.
         self._exchange_codes = tuple(sorted(settings.available_exchanges))
@@ -262,7 +263,9 @@ class AccrualWorker:
         # gross). Knowing success/failure before any freezing happens lets us
         # decide, per user, whether ANY row may be frozen this cycle at all.
         if self._mnt_enabled and any(
-            acc.exchange == "bybit" for accounts in accounts_by_user.values() for acc in accounts
+            acc.exchange == "bybit" and acc.exchange not in self._disabled_exchanges
+            for accounts in accounts_by_user.values()
+            for acc in accounts
         ):
             try:
                 bybit_adapter = self._provider.get("bybit")
@@ -284,6 +287,7 @@ class AccrualWorker:
             if (
                 self._mnt_enabled
                 and self._mnt_rate_failed
+                and "bybit" not in self._disabled_exchanges
                 and any(acc.exchange == "bybit" for acc in accounts)
             ):
                 # MNT can't be valued this cycle and this user has MNT exposure:
@@ -434,6 +438,7 @@ class AccrualWorker:
             "errors": errors,
             "unsupported": unsupported,
             "guarded": guarded,
+            "disabled": sorted(self._disabled_exchanges - RETIRED_EXCHANGES),
             "total_usdt": str(total),
         }
         async with self._sm() as session:
@@ -449,6 +454,9 @@ class AccrualWorker:
         current_month: date,
         now: datetime,
     ) -> None:
+        pollable = [acc for acc in accounts if acc.exchange not in self._disabled_exchanges]
+        if not pollable:
+            return
         # Settlement lag: if ANY of this user's exchanges credits commission late
         # (e.g. KuCoin), defer this user's whole recent window by the largest such lag —
         # never freeze a day whose data hasn't settled. Whole-user (not per-account) so a
@@ -460,7 +468,7 @@ class AccrualWorker:
         user_lag = max(
             (
                 getattr(self._provider.get(acc.exchange), "settlement_lag_days", 0)
-                for acc in accounts
+                for acc in pollable
             ),
             default=0,
         )
@@ -468,7 +476,7 @@ class AccrualWorker:
 
         # Earliest day needing work across the user's accounts (clamped to epoch).
         starts: list[date] = []
-        for acc in accounts:
+        for acc in pollable:
             last_fin = await repo.last_finalized_day(session, acc.id)
             nxt = (last_fin + timedelta(days=1)) if last_fin else acc.accrual_since
             starts.append(max(nxt, self._epoch, acc.accrual_since))
@@ -541,6 +549,10 @@ class AccrualWorker:
                     # existing row(s) stay untouched.
                     day_amount += reused
                     continue
+                if acc.exchange in self._disabled_exchanges:
+                    # A pause is missing data, not a successful zero. Keep its
+                    # history for ranks, but do not advance or freeze this account.
+                    continue
                 adapter = self._provider.get(acc.exchange)
                 query_start, query_end = day_start, day_end
                 if acc.exchange == "gate":
@@ -572,8 +584,7 @@ class AccrualWorker:
                             native_by_asset[line.asset] = (
                                 native_by_asset.get(line.asset, Decimal(0)) + line.amount
                             )
-                        # Other assets (e.g. BitMart's BTC/ETH lines) are
-                        # intentionally not frozen here — unchanged prior behavior.
+                        # Unsupported assets are not converted into USDT implicitly.
 
                 for asset, native in native_by_asset.items():
                     if asset == "USDT":

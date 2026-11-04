@@ -142,6 +142,9 @@ def _format_downline(snapshot: dict[str, Any] | None) -> str:
     missing = sorted(set((snapshot.get("errors") or []) + (snapshot.get("unsupported") or [])))
     if missing:
         lines.append(f"⚠️ Нет данных: {', '.join(missing)}")
+    disabled = sorted(snapshot.get("disabled") or [])
+    if disabled:
+        lines.append(f"⏸ Отключены: {', '.join(disabled)}")
     guarded = sorted(snapshot.get("guarded") or [])
     if guarded:
         lines.append(

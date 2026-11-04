@@ -9,6 +9,11 @@ for unreleased work snapshots.
 
 ### Fixed
 
+- Added explicit exchange pauses: disabled accounts are not queried or finalized
+  as zero and no longer block enabled sibling accounts. Existing accruals and
+  UID ownership are preserved for later resumption.
+- Removed BitMart integration, credential rotation and referral catalog entry.
+
 - Read the admin payout-wallet balance using only its public address and RPC,
   without requiring the executor-only private key in the Telegram bot.
 - Report missing balance-reader settings separately from payout availability,
