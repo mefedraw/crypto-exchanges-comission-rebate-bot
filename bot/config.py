@@ -46,6 +46,9 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
     ExchangeSpec("weex", "WEEX", requires_passphrase=True),
     ExchangeSpec("toobit", "Toobit"),  # Binance-style; key+secret, no passphrase.
     ExchangeSpec("binance", "Binance"),  # Api-Agent apiReferral; key+secret, no passphrase.
+    ExchangeSpec("bitunix", "Bitunix"),
+    ExchangeSpec("bitbase", "BitBase"),
+    ExchangeSpec("blofin", "BloFin", requires_passphrase=True),
 )
 
 SPEC_BY_CODE: dict[str, ExchangeSpec] = {spec.code: spec for spec in EXCHANGE_SPECS}
@@ -247,6 +250,37 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("BINANCE_API_SECRET", "BINANCE_SECRET_KEY"),
     )
 
+    bitunix_api_key: SecretStr | None = Field(default=None, alias="BITUNIX_API_KEY")
+    bitunix_api_secret: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("BITUNIX_API_SECRET", "BITUNIX_SECRET_KEY")
+    )
+    bitbase_api_key: SecretStr | None = Field(default=None, alias="BITBASE_API_KEY")
+    bitbase_api_secret: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("BITBASE_API_SECRET", "BITBASE_SECRET_KEY")
+    )
+    blofin_api_key: SecretStr | None = Field(default=None, alias="BLOFIN_API_KEY")
+    blofin_api_secret: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("BLOFIN_API_SECRET", "BLOFIN_SECRET_KEY")
+    )
+    blofin_api_passphrase: SecretStr | None = Field(default=None, alias="BLOFIN_API_PASSPHRASE")
+    # VERIFIED: the daily affiliate schema has no currency field. Explicit consent
+    # is required before booking its amounts as a particular asset.
+    blofin_commission_asset: str | None = Field(default=None, alias="BLOFIN_COMMISSION_ASSET")
+
+    @field_validator("blofin_commission_asset", mode="before")
+    @classmethod
+    def _commission_asset(cls, value: object) -> str | None:
+        if value is None or value == "":
+            return None
+        if not isinstance(value, str):
+            raise ValueError("Commission asset must be a currency symbol")
+        asset = value.strip().upper()
+        if not asset:
+            return None
+        if not (asset.isascii() and asset.isalnum() and 2 <= len(asset) <= 16):
+            raise ValueError("Commission asset must contain 2-16 ASCII letters/digits")
+        return asset
+
     @cached_property
     def user_telegram_ids(self) -> frozenset[int]:
         """Owner IDs parsed from the comma-separated USER_TELEGRAM_IDS value."""
@@ -322,14 +356,18 @@ class Settings(BaseSettings):
             else None
         )
 
-        if api_key is None:
+        if api_key is None or not api_key.get_secret_value().strip():
             return None
         if spec.requires_secret:
-            if api_secret is None:
+            if api_secret is None or not api_secret.get_secret_value().strip():
                 return None
         else:
             api_secret = api_secret or SecretStr("")
-        if spec.requires_passphrase and passphrase is None:
+        if spec.requires_passphrase and (
+            passphrase is None or not passphrase.get_secret_value().strip()
+        ):
+            return None
+        if spec.code == "blofin" and self.blofin_commission_asset is None:
             return None
 
         return ExchangeCredentials(spec, api_key, api_secret, passphrase)

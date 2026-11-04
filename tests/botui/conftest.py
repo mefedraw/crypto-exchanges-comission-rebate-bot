@@ -10,6 +10,12 @@ from testcontainers.postgres import PostgresContainer
 
 from bot.db.base import Base
 from bot.db.engine import make_engine
+from tests.conftest import make_settings
+
+
+@pytest.fixture(autouse=True)
+def keyboard_settings(monkeypatch):
+    monkeypatch.setattr("bot.botui.keyboards.get_settings", lambda: make_settings(DEMO_MODE=True))
 
 
 @pytest.fixture(scope="session")

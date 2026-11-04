@@ -83,8 +83,9 @@ def test_owner_supplied_catalog_matches_details_and_buttons(slug, emoji, url, no
 def test_bitmart_is_removed_and_link_only_exchanges_do_not_add_adapters():
     assert len(REFERRALS) == 21
     assert get_referral("bitmart") is None
-    new_slugs = {"bitbase", "bitunix", "lbank", "blofin", "qfex"}
+    new_slugs = {"lbank", "qfex"}
     assert new_slugs.isdisjoint(spec.code for spec in EXCHANGE_SPECS)
+    assert {"bitbase", "bitunix", "blofin"} <= {spec.code for spec in EXCHANGE_SPECS}
 
 
 def test_risex_has_no_invented_percentage_or_dangling_separator():
