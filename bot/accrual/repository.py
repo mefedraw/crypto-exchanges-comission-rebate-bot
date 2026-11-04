@@ -52,7 +52,9 @@ async def last_finalized_day(session: AsyncSession, account_id: int) -> date | N
     return cast("date | None", await session.scalar(stmt))
 
 
-async def last_gate_query_end(session: AsyncSession, account_id: int) -> datetime | None:
+async def _last_query_end(
+    session: AsyncSession, account_id: int, resolution: timedelta
+) -> datetime | None:
     """Resume beyond exact coverage, or the legacy UTC day, without a cutover overlap."""
     stmt = (
         select(RebateAccrual.accrual_date, RebateAccrual.query_to)
@@ -69,10 +71,16 @@ async def last_gate_query_end(session: AsyncSession, account_id: int) -> datetim
         return None
     if row.query_to is not None:
         return cast("datetime", row.query_to)
-    # VERIFIED: pre-fix Gate used UTC calendar dates, even for UTC+8 worker inputs.
-    return datetime.combine(row.accrual_date + timedelta(days=1), time.min, UTC) - timedelta(
-        seconds=1
-    )
+    # VERIFIED: legacy Gate/WEEX rebuilt UTC dates from the worker's UTC+8 bounds.
+    return datetime.combine(row.accrual_date + timedelta(days=1), time.min, UTC) - resolution
+
+
+async def last_gate_query_end(session: AsyncSession, account_id: int) -> datetime | None:
+    return await _last_query_end(session, account_id, timedelta(seconds=1))
+
+
+async def last_weex_query_end(session: AsyncSession, account_id: int) -> datetime | None:
+    return await _last_query_end(session, account_id, timedelta(milliseconds=1))
 
 
 async def finalized_amounts(

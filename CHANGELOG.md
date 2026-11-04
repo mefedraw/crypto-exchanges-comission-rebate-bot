@@ -9,6 +9,13 @@ for unreleased work snapshots.
 
 ### Fixed
 
+- WEEX now preserves exact timezone-aware query bounds at millisecond precision,
+  with overlap-safe legacy UTC coverage at the UTC+8 accrual cutover.
+- Whole-channel WEEX totals discover UIDs from commissions instead of registration
+  dates, then sum owner-scoped UID responses without including subsidiary income.
+- WEEX commission pagination rejects incomplete/error responses rather than
+  returning an understated total; requests are paced conservatively.
+
 - Added explicit exchange pauses: disabled accounts are not queried or finalized
   as zero and no longer block enabled sibling accounts. Existing accruals and
   UID ownership are preserved for later resumption.
