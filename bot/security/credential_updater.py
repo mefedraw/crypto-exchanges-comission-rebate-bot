@@ -41,6 +41,9 @@ _FIELDS_BY_EXCHANGE: dict[str, frozenset[str]] = {
     "weex": frozenset({"WEEX_API_KEY", "WEEX_API_SECRET", "WEEX_API_PASSPHRASE"}),
     "toobit": frozenset({"TOOBIT_API_KEY", "TOOBIT_API_SECRET"}),
     "binance": frozenset({"BINANCE_API_KEY", "BINANCE_API_SECRET"}),
+    "bitunix": frozenset({"BITUNIX_API_KEY", "BITUNIX_API_SECRET"}),
+    "bitbase": frozenset({"BITBASE_API_KEY", "BITBASE_API_SECRET"}),
+    "blofin": frozenset({"BLOFIN_API_KEY", "BLOFIN_API_SECRET", "BLOFIN_API_PASSPHRASE"}),
 }
 _ALL_FIELDS = frozenset().union(*_FIELDS_BY_EXCHANGE.values())
 _FIELD_ORDER = tuple(sorted(_ALL_FIELDS))

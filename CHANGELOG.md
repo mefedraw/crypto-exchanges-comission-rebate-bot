@@ -37,6 +37,13 @@ for unreleased work snapshots.
 
 ### Added
 
+- Integrated BitBase, Bitunix and BloFin partner commission adapters, with
+  read-only signatures, strict response parsing and explicit BloFin denomination.
+- Preserved exact absolute periods for Bitunix/BloFin, documented BitBase's UTC
+  calendar-day limitation, and refreshed expiring signatures on every retry.
+- Added credential rotation support and configured-only UID choices for the
+  new exchanges; MEXC/Bitget pauses and BitMart removal remain unchanged.
+
 - Added persistent user language settings and seven additional UI languages:
   English, Ukrainian, Simplified Chinese, Turkish, Hindi, Thai, and Vietnamese.
 - Localized cabinet screens, support statuses, partner views and background

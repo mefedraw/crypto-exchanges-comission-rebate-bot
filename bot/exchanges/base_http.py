@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import time
 from email.utils import parsedate_to_datetime
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -91,8 +91,11 @@ class BaseHttpAdapter(ExchangeAdapter):
         for attempt in range(self._max_retries + 1):
             try:
                 await self._pace_request()
+                attempt_path, attempt_headers, attempt_content = self._prepare_request(
+                    method, request_path, headers, content
+                )
                 response = await self._client.request(
-                    method, request_path, headers=headers, content=content
+                    method, attempt_path, headers=attempt_headers, content=attempt_content
                 )
             except UnicodeEncodeError as exc:
                 # A credential (key/secret/passphrase) holds a non-ASCII char —
@@ -150,12 +153,26 @@ class BaseHttpAdapter(ExchangeAdapter):
 
             self._log.debug("request ok", path=safe_path, status=status)
             try:
-                return response.json()
+                return self._decode_response(response)
             except ValueError as exc:
                 raise ExchangeApiError(f"{self.name}: invalid JSON response") from exc
 
         # Loop only exits via return/raise; this guards against logic errors.
         raise ExchangeUnavailableError(f"{self.name}: request failed") from last_exc
+
+    def _decode_response(self, response: httpx.Response) -> Any:
+        """Allow adapters to preserve JSON monetary numbers as Decimal."""
+        return response.json()
+
+    def _prepare_request(
+        self,
+        method: str,
+        request_path: str,
+        headers: dict[str, str] | None,
+        content: str | None,
+    ) -> tuple[str, dict[str, str] | None, str | None]:
+        """Refresh short-lived authentication after pacing, for every attempt."""
+        return request_path, headers, content
 
     def _business_error_body(self, response: httpx.Response) -> Any | None:
         """Hook: if a 5xx actually carries a business response this adapter handles (not a
@@ -177,7 +194,7 @@ class BaseHttpAdapter(ExchangeAdapter):
     @staticmethod
     def _safe_json(response: httpx.Response) -> object | None:
         try:
-            return response.json()
+            return cast(object, response.json())
         except ValueError:
             return None
 
