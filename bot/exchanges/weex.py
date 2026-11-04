@@ -2,7 +2,7 @@
 
 Endpoint: GET /api/v3/rebate/affiliate/getAffiliateCommission
 Host: https://api-spot.weex.com
-Docs: https://www.weex.com/api-doc/partner/rebate-endpoints/GetAffiliateCommission
+Docs: https://www.weex.com/api-doc/products/partner/rebate-endpoints/GetAffiliateCommission
 
 VERIFIED (live): host, v3 path (per WEEX support), Bitget-style signing, affiliate
 permission, request params (uid/startTime/endTime/coin/productType/page/pageSize),
@@ -15,8 +15,10 @@ filtered to USDT. Max range is 3 months; we slice into 30-day windows.
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
+from collections.abc import AsyncIterator, Iterator
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 from urllib.parse import urlencode
 
 import httpx
@@ -31,7 +33,7 @@ from bot.exchanges.base import (
 from bot.exchanges.base_http import BaseHttpAdapter
 from bot.exchanges.registry import register
 from bot.exchanges.signing import hmac_base64
-from bot.utils.dates import iter_windows, to_millis
+from bot.utils.dates import to_millis
 from bot.utils.money import parse_decimal
 
 # VERIFIED (live): host https://api-spot.weex.com, path version v3 (per WEEX support).
@@ -55,6 +57,28 @@ _PRODUCT_TYPES = ("SPOT", "FUTURES")
 _AFFILIATE_UIDS_PATH = "/api/v3/rebate/affiliate/getAffiliateUIDs"
 _VERIFY_WINDOW_DAYS = 90  # endpoint requires a window; membership is window-independent.
 _NOT_PARTNER_CODE = "-1054"  # VERIFIED (live): "The UID is not part of the partner system".
+_MILLISECOND = timedelta(milliseconds=1)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+
+
+def _millis(value: datetime) -> int:
+    return (value.astimezone(UTC) - _EPOCH) // _MILLISECOND
+
+
+def _query_windows(
+    date_from: datetime, date_to: datetime, max_window_days: int
+) -> Iterator[tuple[datetime, datetime]]:
+    """Inclusive, exact UTC windows at WEEX's millisecond resolution."""
+    if date_from.utcoffset() is None or date_to.utcoffset() is None:
+        raise ValueError("WEEX query bounds must be timezone-aware")
+    if date_to < date_from or max_window_days < 1:
+        raise ValueError("Invalid WEEX query interval")
+    cursor = _EPOCH + _millis(date_from) * _MILLISECOND
+    last = _EPOCH + _millis(date_to) * _MILLISECOND
+    while cursor <= last:
+        end = min(cursor + timedelta(days=max_window_days) - _MILLISECOND, last)
+        yield cursor, end
+        cursor = end + _MILLISECOND
 
 
 class WeexAdapter(BaseHttpAdapter):
@@ -66,6 +90,9 @@ class WeexAdapter(BaseHttpAdapter):
     max_window_days = 30
     supports_uid_filter = True
     supports_date_range = True
+    # ASSUMED: conservative per-process pacing leaves headroom for other clients
+    # sharing WEEX's IP-weight budget; HTTP 429 still uses the shared backoff.
+    min_request_interval_seconds = 1.0
 
     def _headers(self, method: str, request_path: str) -> dict[str, str]:
         """VERIFIED (live): Bitget-style base64(hmac_sha256(ts + method + requestPath + body)),
@@ -99,9 +126,7 @@ class WeexAdapter(BaseHttpAdapter):
         result = self._new_result(uid, date_from, date_to)
         self._log.info("get_commission", uid=uid, date_from=str(date_from), date_to=str(date_to))
 
-        for window_start, window_end in iter_windows(
-            date_from.date(), date_to.date(), self.max_window_days
-        ):
+        for window_start, window_end in _query_windows(date_from, date_to, self.max_window_days):
             await self._collect_window(uid, window_start, window_end, result)
 
         result.settlement_note = "WEEX: сумма spot+futures USDT-комиссии за период (по данным API)."
@@ -122,44 +147,69 @@ class WeexAdapter(BaseHttpAdapter):
         product_type: str,
         result: CommissionResult,
     ) -> None:
+        async for records in self._commission_pages(uid, window_start, window_end, product_type):
+            for record in records:
+                asset = self._first(record, _COIN_FIELDS)
+                amount_raw = self._first(record, _AMOUNT_FIELDS)
+                if asset is None or amount_raw is None:
+                    raise ExchangeApiError("WEEX: commission row has no asset or amount")
+                result.add_amount(str(asset), parse_decimal(amount_raw))
+            result.raw_records_count += len(records)
+
+    async def _commission_pages(
+        self, uid: str | None, start: datetime, end: datetime, product_type: str
+    ) -> AsyncIterator[list[dict[str, Any]]]:
         page = 1
+        seen = 0
+        expected: int | None = None
         while True:
-            params = {
-                "uid": uid,
-                "startTime": to_millis(window_start),
-                "endTime": to_millis(window_end),
+            params: dict[str, str | int] = {
+                "startTime": _millis(start),
+                "endTime": _millis(end),
                 "coin": "USDT",
                 "productType": product_type,
                 "page": page,
                 "pageSize": _PAGE_LIMIT,
             }
+            if uid is not None:
+                params["uid"] = uid
             query = urlencode(params)
             request_path = f"{_PATH}?{query}"
             payload = await self._send(
                 "GET", request_path, headers=self._headers("GET", request_path), log_path=_PATH
             )
+            if (
+                uid is None
+                and isinstance(payload, dict)
+                and str(payload.get("code")) == _NOT_PARTNER_CODE
+            ):
+                raise ExchangeApiError("WEEX: channel commission discovery was rejected")
             records, total_pages = self._extract_page(payload)
-            for record in records:
-                asset = self._first(record, _COIN_FIELDS)
-                amount_raw = self._first(record, _AMOUNT_FIELDS)
-                if asset is None or amount_raw is None:
-                    continue
-                result.add_amount(str(asset), parse_decimal(amount_raw))
-            result.raw_records_count += len(records)
-
-            if not records or len(records) < _PAGE_LIMIT or page >= total_pages:
+            if uid is not None and any("uid" in row and str(row["uid"]) != uid for row in records):
+                raise ExchangeApiError("WEEX: commission response UID mismatch")
+            if isinstance(payload, dict) and payload.get("total") is not None:
+                total = self._page_int(payload["total"])
+                if expected is not None and total != expected:
+                    raise ExchangeApiError("WEEX: commission pagination changed")
+                expected = total
+            seen += len(records)
+            yield records
+            if page >= total_pages:
+                if expected is not None and seen != expected:
+                    raise ExchangeApiError("WEEX: incomplete commission pagination")
                 break
+            if not records:
+                raise ExchangeApiError("WEEX: empty intermediate commission page")
             page += 1
 
     async def get_downline_total(self, date_from: datetime, date_to: datetime) -> Decimal | None:
-        """Whole-downline USDT rebate via list-then-sum (like Bitget): enumerate every
-        channel uid, then sum each one's spot+futures USDT commission for the period.
+        """Discover income-bearing UIDs, then sum owner-scoped per-UID responses.
 
-        VERIFIED (live 2026-07-20): ``getAffiliateUIDs`` called WITHOUT a uid filter
-        returns HTTP 200 with the whole channel under ``channelUserInfoItemList`` (each
-        row carries ``uid``), paginated via ``pages`` — so enumeration is real, not
-        assumed. A uid that earned nothing yields an empty (or -1054) commission page,
-        which :meth:`get_commission` already treats as 0."""
+        VERIFIED (live export audit): the registration-list date filter misses older
+        UIDs with current income. Unfiltered commissions discover those UIDs, but
+        contain BOTH parent and subsidiary income. Their amounts must not be summed.
+        UID-filtered commission responses retain the owner's correct attribution.
+        """
         total = Decimal(0)
         for uid in await self._list_channel_uids(date_from, date_to):
             result = await self.get_commission(uid, date_from, date_to)
@@ -167,51 +217,17 @@ class WeexAdapter(BaseHttpAdapter):
         return total
 
     async def _list_channel_uids(self, date_from: datetime, date_to: datetime) -> list[str]:
-        """Every uid under the owner's channel over the period (deduped, sorted).
-
-        Pages ``getAffiliateUIDs`` with NO uid filter; windows the range by
-        ``max_window_days`` and unions the uids so a >30-day span can't be truncated."""
+        """UID discovery follows commission dates, never registration dates."""
         uids: set[str] = set()
-        for window_start, window_end in iter_windows(
-            date_from.date(), date_to.date(), self.max_window_days
-        ):
-            page = 1
-            while True:
-                params = {
-                    "startTime": to_millis(window_start),
-                    "endTime": to_millis(window_end),
-                    "page": page,
-                    "pageSize": _PAGE_LIMIT,
-                }
-                request_path = f"{_AFFILIATE_UIDS_PATH}?{urlencode(params)}"
-                payload = await self._send(
-                    "GET",
-                    request_path,
-                    headers=self._headers("GET", request_path),
-                    log_path=_AFFILIATE_UIDS_PATH,
-                )
-                rows, total_pages = self._extract_uid_page(payload)
-                for row in rows:
-                    uid = row.get("uid")
-                    if uid not in (None, ""):
-                        uids.add(str(uid))
-                if not rows or len(rows) < _PAGE_LIMIT or page >= total_pages:
-                    break
-                page += 1
+        for window_start, window_end in _query_windows(date_from, date_to, self.max_window_days):
+            for product in _PRODUCT_TYPES:
+                async for rows in self._commission_pages(None, window_start, window_end, product):
+                    for row in rows:
+                        uid = str(row.get("uid", ""))
+                        if not uid.isascii() or not uid.isdigit() or int(uid) <= 0:
+                            raise ExchangeApiError("WEEX: discovery row has an invalid UID")
+                        uids.add(uid)
         return sorted(uids)
-
-    @staticmethod
-    def _extract_uid_page(payload: object) -> tuple[list[dict[str, object]], int]:
-        """Return (uid rows, total_pages) from a getAffiliateUIDs response.
-
-        VERIFIED (live): flat object, rows under ``channelUserInfoItemList``, page count
-        in ``pages`` (no ``code`` field on success)."""
-        if not isinstance(payload, dict):
-            return [], 0
-        items = payload.get("channelUserInfoItemList")
-        if isinstance(items, list):
-            return items, WeexAdapter._as_int(payload.get("pages"), default=1)
-        return [], 0
 
     async def verify_referral(self, uid: str) -> ReferralCheck:
         """Ask WEEX whether ``uid`` is the partner's referral (uid-filtered call).
@@ -222,7 +238,7 @@ class WeexAdapter(BaseHttpAdapter):
         UNVERIFIABLE (fail open). Bypasses _send because -1054 rides an HTTP 500 that
         _send would retry and discard.
         """
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - timedelta(days=_VERIFY_WINDOW_DAYS)
         params = {
             "uid": uid,
@@ -252,10 +268,10 @@ class WeexAdapter(BaseHttpAdapter):
         )
         return ReferralCheck.UNVERIFIABLE
 
-    def _extract_page(self, payload: object) -> tuple[list[dict], int]:
+    def _extract_page(self, payload: object) -> tuple[list[dict[str, Any]], int]:
         """Return (records, total_pages) from a WEEX v3 commission response."""
         if not isinstance(payload, dict):
-            return [], 0
+            raise ExchangeApiError("WEEX: invalid commission payload")
         code = str(payload.get("code", "00000"))
         if code == _NOT_PARTNER_CODE:
             # uid is not under this channel -> no commission for it (WEEX returns this as
@@ -267,7 +283,9 @@ class WeexAdapter(BaseHttpAdapter):
         # `channelCommissionInfoItems`, pagination via `pages`.
         items = payload.get("channelCommissionInfoItems")
         if isinstance(items, list):
-            return items, self._as_int(payload.get("pages"), default=1)
+            if not all(isinstance(row, dict) for row in items):
+                raise ExchangeApiError("WEEX: invalid commission rows")
+            return items, self._page_int(payload.get("pages", 1))
         # Fallback for any data.* envelope shape.
         data = payload.get("data")
         if isinstance(data, list):
@@ -276,18 +294,23 @@ class WeexAdapter(BaseHttpAdapter):
             for key in ("list", "rows", "items", "records"):
                 inner = data.get(key)
                 if isinstance(inner, list):
-                    return inner, self._as_int(data.get("pages"), default=1)
-        return [], 0
+                    return inner, self._page_int(data.get("pages", 1))
+        raise ExchangeApiError("WEEX: commission rows are missing")
 
     @staticmethod
-    def _as_int(value: object, *, default: int) -> int:
+    def _page_int(value: object) -> int:
+        if isinstance(value, bool) or not isinstance(value, int | str):
+            raise ExchangeApiError("WEEX: invalid pagination metadata")
         try:
-            return int(value)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
-            return default
+            result = int(value)
+        except ValueError as exc:
+            raise ExchangeApiError("WEEX: invalid pagination metadata") from exc
+        if result < 0:
+            raise ExchangeApiError("WEEX: invalid pagination metadata")
+        return result
 
     @staticmethod
-    def _first(record: dict, fields: tuple[str, ...]) -> object | None:
+    def _first(record: dict[str, Any], fields: tuple[str, ...]) -> Any:
         for field in fields:
             if field in record and record[field] not in (None, ""):
                 return record[field]

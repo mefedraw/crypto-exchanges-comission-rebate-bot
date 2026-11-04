@@ -1,13 +1,7 @@
-"""Tests for WeexAdapter.get_downline_total — list-then-sum.
-
-VERIFIED (live 2026-07-20): ``getAffiliateUIDs`` without a uid filter enumerates the
-whole channel (rows under ``channelUserInfoItemList``, paginated via ``pages``). The
-adapter lists every uid, then sums each one's spot+futures USDT commission.
-"""
+"""Commission-driven UID discovery followed by owner-scoped commission sums."""
 
 from __future__ import annotations
 
-import re
 from datetime import date
 from decimal import Decimal
 
@@ -35,31 +29,26 @@ def _creds(code: str, *, passphrase: bool = False) -> ExchangeCredentials:
     assert_all_responses_were_requested=False, can_send_already_matched_responses=True
 )
 async def test_weex_downline_total_lists_uids_and_sums(httpx_mock):
-    # getAffiliateUIDs (no uid) enumerates the channel: 2 uids on one page.
-    httpx_mock.add_response(
-        url=re.compile(r".*getAffiliateUIDs.*"),
-        json={
-            "channelUserInfoItemList": [{"uid": "111"}, {"uid": "222"}],
-            "pages": 1,
-            "total": 2,
-            "pageSize": 100,
-        },
-    )
-    # Each uid's commission call (SPOT + FUTURES) returns the same 1.5 USDT record.
-    httpx_mock.add_response(
-        url=re.compile(r".*getAffiliateCommission.*"),
-        json={
-            "code": "00000",
-            "channelCommissionInfoItems": [{"coin": "USDT", "commission": "1.5"}],
-            "pages": 1,
-        },
-    )
+    def response(request):
+        import httpx
+
+        if "uid" not in request.url.params:
+            # Both parent and child income may be present; these amounts are NOT summed.
+            rows = [{"uid": "111", "commission": "900"}, {"uid": "222", "commission": "800"}]
+        else:
+            rows = [{"coin": "USDT", "commission": "1.5"}]
+        return httpx.Response(
+            200, json={"channelCommissionInfoItems": rows, "pages": 1, "total": len(rows)}
+        )
+
+    httpx_mock.add_callback(response)
     adapter = WeexAdapter(_creds("weex", passphrase=True), make_settings())
     total = await adapter.get_downline_total(day_start(_DAY), day_end(_DAY))
     await adapter.aclose()
 
     # 2 uids × (SPOT 1.5 + FUTURES 1.5) = 2 × 3.0 = 6.0
     assert total == Decimal("6.0")
+    assert all("getAffiliateUIDs" not in str(r.url) for r in httpx_mock.get_requests())
 
 
 @pytest.mark.httpx_mock(
@@ -67,8 +56,7 @@ async def test_weex_downline_total_lists_uids_and_sums(httpx_mock):
 )
 async def test_weex_downline_total_empty_channel_is_zero(httpx_mock):
     httpx_mock.add_response(
-        url=re.compile(r".*getAffiliateUIDs.*"),
-        json={"channelUserInfoItemList": [], "pages": 1, "total": 0, "pageSize": 100},
+        json={"channelCommissionInfoItems": [], "pages": 0, "total": 0, "pageSize": 100},
     )
     adapter = WeexAdapter(_creds("weex", passphrase=True), make_settings())
     total = await adapter.get_downline_total(day_start(_DAY), day_end(_DAY))

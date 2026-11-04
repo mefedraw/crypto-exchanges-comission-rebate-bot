@@ -497,11 +497,18 @@ class AccrualWorker:
             )
             for acc in accounts
         }
-        gate_query_ends = {
+        query_ends = {
             acc.id: await repo.last_gate_query_end(session, acc.id)
             for acc in accounts
             if acc.exchange == "gate"
         }
+        query_ends.update(
+            {
+                acc.id: await repo.last_weex_query_end(session, acc.id)
+                for acc in accounts
+                if acc.exchange == "weex"
+            }
+        )
 
         override_pct, override_since = await repo.get_commission_override(session, user_id)
 
@@ -555,21 +562,31 @@ class AccrualWorker:
                     continue
                 adapter = self._provider.get(acc.exchange)
                 query_start, query_end = day_start, day_end
-                if acc.exchange == "gate":
-                    previous_end = gate_query_ends[acc.id]
+                if acc.exchange in {"gate", "weex"}:
+                    step = (
+                        timedelta(seconds=1)
+                        if acc.exchange == "gate"
+                        else timedelta(milliseconds=1)
+                    )
+                    previous_end = query_ends[acc.id]
                     if previous_end is not None:
-                        query_start = max(query_start, previous_end + timedelta(seconds=1))
+                        query_start = max(query_start, previous_end + step)
                     if query_start > query_end:
                         continue
                     # Preserve the old UTC coverage at cutover; never count its last
                     # eight hours again in the first UTC+8 day after deployment.
+                    unit = 1_000_000 if acc.exchange == "gate" else 1000
                     query_bounds_by_acc[acc.id] = (
-                        query_start.astimezone(UTC).replace(microsecond=0),
-                        query_end.astimezone(UTC).replace(microsecond=0),
+                        query_start.astimezone(UTC).replace(
+                            microsecond=query_start.microsecond // unit * unit
+                        ),
+                        query_end.astimezone(UTC).replace(
+                            microsecond=query_end.microsecond // unit * unit
+                        ),
                     )
                 result = await adapter.get_commission(acc.uid, query_start, query_end)
-                if acc.exchange == "gate":
-                    gate_query_ends[acc.id] = query_bounds_by_acc[acc.id][1]
+                if acc.exchange in {"gate", "weex"}:
+                    query_ends[acc.id] = query_bounds_by_acc[acc.id][1]
 
                 # Sum same-asset lines first (an adapter may emit several lines per
                 # asset split by source, e.g. SPOT/FUTURES) so each asset freezes
