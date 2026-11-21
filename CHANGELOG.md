@@ -9,8 +9,10 @@ for unreleased work snapshots.
 
 ### Fixed
 
-- Binance Referral Pro accruals are on hold until a UID-attributed source is
-  reconciled. Linked accounts remain intact; missing commissions are not zeros.
+- Binance Referral Pro membership and USD diagnostics use the invitee performance
+  endpoint instead of the unrelated Link broker API. The worker stays on hold
+  until settlement amounts and assets can be attributed to UIDs. A dashboard
+  estimate cannot become a USDT accrual or a confirmed zero.
 
 - WEEX now preserves exact timezone-aware query bounds at millisecond precision,
   with overlap-safe legacy UTC coverage at the UTC+8 accrual cutover.

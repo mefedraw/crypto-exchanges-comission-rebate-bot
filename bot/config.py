@@ -45,7 +45,7 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
     ExchangeSpec("bybit", "Bybit"),
     ExchangeSpec("weex", "WEEX", requires_passphrase=True),
     ExchangeSpec("toobit", "Toobit"),  # Binance-style; key+secret, no passphrase.
-    ExchangeSpec("binance", "Binance"),  # Api-Agent apiReferral; key+secret, no passphrase.
+    ExchangeSpec("binance", "Binance"),  # Referral Pro read key, not Binance Link.
     ExchangeSpec("bitunix", "Bitunix"),
     ExchangeSpec("bitbase", "BitBase"),
     ExchangeSpec("blofin", "BloFin", requires_passphrase=True),
@@ -53,9 +53,9 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
 
 SPEC_BY_CODE: dict[str, ExchangeSpec] = {spec.code: spec for spec in EXCHANGE_SPECS}
 RETIRED_EXCHANGES = frozenset({"bitmart"})
-# Api-Agent customer IDs are not Affiliate Referral Pro invitee UIDs.
-# Enabling credentials or clearing an operational pause cannot make them equivalent.
-NO_UID_ATTRIBUTION = frozenset({"binance"})
+# Binance performance is attributable in USD; the settlement asset/amount is not.
+# Clearing an operational pause must not enable USD estimates for a USDT ledger.
+NO_NATIVE_PAYOUT_DATA = frozenset({"binance"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,7 +217,7 @@ class Settings(BaseSettings):
 
     @property
     def disabled_exchanges(self) -> frozenset[str]:
-        return NO_UID_ATTRIBUTION.union(filter(None, self.disabled_exchanges_raw.split(",")))
+        return NO_NATIVE_PAYOUT_DATA.union(filter(None, self.disabled_exchanges_raw.split(",")))
 
     def exchange_enabled(self, code: str) -> bool:
         return code in SPEC_BY_CODE and code not in self.disabled_exchanges

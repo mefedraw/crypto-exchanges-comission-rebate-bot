@@ -4,9 +4,38 @@ Binance Link (Api-Agent) customer IDs do not establish Referral Pro invitee
 ownership. The Spot taxQuery response has no invitee UID. Never assign these
 account-level amounts to a bot user, even if only one UID is linked.
 
-Keep the UID hold in place until a read-only partner source or a verified
-Referral Pro report is available. Links, bindings, and historical ledger rows
-are not removed by the hold.
+The signed read-only `GET /sapi/v1/affiliate/performance/invitee` takes
+`userId`, and optionally inclusive `startDate` and `endDate` as YYYY-MM-DD.
+Verified from the worker IP against linked accounts on 2026-11-21: a member
+returns HTTP 200, code `000000000`, and an invitee profile; for two other
+bindings Binance returned HTTP 400, code `-29002` (not this affiliate's
+invitee). Do not use a timeout, parse error, or authentication failure as a
+negative membership decision. The dashboard USD amounts matched both the
+period and lifetime readings to the precision displayed. The API has no asset,
+distribution status, or transaction identity. A missing amount is not zero.
+
+The [Affiliate Performance SDK implementation](https://github.com/JKorf/Binance.Net/pull/1598)
+was contributed using documentation from Binance Business Development. Its
+other method is grouped by referral code, not by payout transaction.
+[Binance describes the default USDC settlement and the separate USD display valuation](https://www.binance.com/en-BH/support/faq/detail/63572e23acda4bc891fd605e93335669).
+Neither the default currency nor an original BNB trading fee makes the USD
+display amount the native amount received. Do not join independent reports by
+timestamp or approximate value. The [Spot wallet dividend endpoint](https://developers.binance.com/docs/wallet/asset/assets-divided-record)
+does return an amount and asset, but its entries do not identify the invitee.
+The [USD-M income history](https://developers.binance.com/docs/derivatives/usds-margined-futures/account/rest-api/Get-Income-History)
+also lacks an invitee UID: on our read-only check the `REFERRAL_KICKBACK`
+records contained a masked address in `info`. A masked address, trade ID or
+wallet transaction ID is not proof of ownership of an invitee UID.
+
+Keep the payout hold until the API or the official **My Commission > Commission
+Rebate** report identifies actual distributions by invitee and asset. Do not
+import **Shared Commissions** or a Users/Performance export as a payout report.
+Binance's [referral settlement announcement](https://www.binance.com/en/support/announcement/detail/9490ef81489844a6babc385eba238d75)
+describes where to find the original token, quantity and actual converted USDC
+for the covered Spot and Margin products. Do not apply that settlement rule to
+Futures without matching distribution records.
+No exchange keys, login cookies or HAR files should be shared. Links, bindings
+and historical ledger rows are not removed by the hold.
 
 Before posting any corrections:
 

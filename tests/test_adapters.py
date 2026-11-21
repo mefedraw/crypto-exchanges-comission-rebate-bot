@@ -11,12 +11,10 @@ from pydantic import SecretStr
 
 from bot.config import SPEC_BY_CODE, ExchangeCredentials
 from bot.exchanges.base import (
-    ExchangeApiError,
     ExchangeAuthError,
     ExchangeRateLimitError,
     ExchangeUnavailableError,
 )
-from bot.exchanges.binance import BinanceAdapter
 from bot.exchanges.bitget import BitgetAdapter
 from bot.exchanges.bybit import BybitAdapter
 from bot.exchanges.gate import GateAdapter
@@ -222,72 +220,6 @@ async def test_kucoin_widens_fetch_and_filters_by_tradetime(httpx_mock):
     # the FETCH window is WIDE: tradeStartAt is well before the requested day's midnight.
     qs = parse_qs(urlparse(str(httpx_mock.get_requests()[0].url)).query)
     assert int(qs["tradeStartAt"][0]) < 1777593600000  # < 2026-05-01 00:00 UTC
-
-
-async def test_binance_sums_income_by_asset(httpx_mock):
-    # apiReferral/rebate/recentRecord returns a flat array of per-trade records;
-    # get_commission sums `income` per `asset` (any coin), filtered to the customerId.
-    httpx_mock.add_response(
-        json=[
-            {"customerId": "123", "income": "1.5", "asset": "USDT", "time": _DAY_NOON_MS},
-            {"customerId": "123", "income": "2.5", "asset": "USDT", "time": _DAY_NOON_MS},
-            {"customerId": "123", "income": "0.01", "asset": "BNB", "time": _DAY_NOON_MS},
-        ]
-    )
-    adapter = BinanceAdapter(_creds("binance"), make_settings())
-    result = await adapter.get_commission("123", day_start(_DAY), day_end(_DAY))
-    await adapter.aclose()
-    amounts = {line.asset: line.amount for line in result.lines}
-    assert amounts["USDT"] == Decimal("4.0")
-    assert amounts["BNB"] == Decimal("0.01")
-    assert result.raw_records_count == 3
-
-
-async def test_binance_signs_request_and_filters_customer(httpx_mock):
-    httpx_mock.add_response(json=[])
-    adapter = BinanceAdapter(_creds("binance"), make_settings())
-    await adapter.get_commission("553515896", day_start(_DAY), day_end(_DAY))
-    await adapter.aclose()
-
-    req = httpx_mock.get_requests()[0]
-    assert req.headers["X-MBX-APIKEY"] == "api-key"  # key in header
-    url = urlparse(str(req.url))
-    assert url.path == "/sapi/v1/apiReferral/rebate/recentRecord"
-    qs = parse_qs(url.query)
-    assert qs["customerId"][0] == "553515896"  # per-invitee filter
-    assert qs["signature"][0]  # HMAC signature appended
-    assert qs["timestamp"][0]
-
-
-async def test_binance_business_error_raises(httpx_mock):
-    # A Binance error envelope (e.g. -2015 no apiReferral permission) must surface,
-    # never be silently counted as 0.
-    httpx_mock.add_response(
-        json={"code": -2015, "msg": "Invalid API-key, IP, or permissions for action."}
-    )
-    adapter = BinanceAdapter(_creds("binance"), make_settings())
-    with pytest.raises(ExchangeApiError):
-        await adapter.get_commission("1", day_start(_DAY), day_end(_DAY))
-    await adapter.aclose()
-
-
-@pytest.mark.httpx_mock(
-    assert_all_responses_were_requested=False, can_send_already_matched_responses=True
-)
-async def test_binance_slices_into_7_day_windows(httpx_mock):
-    # The endpoint requires a span <= 7 days, so a 20-day period is sliced into 3
-    # windows (7 + 7 + 6), each with startTime/endTime <= 7 days apart.
-    httpx_mock.add_response(json=[])
-    adapter = BinanceAdapter(_creds("binance"), make_settings())
-    await adapter.get_commission("1", day_start(date(2026, 5, 1)), day_end(date(2026, 5, 20)))
-    await adapter.aclose()
-
-    reqs = httpx_mock.get_requests()
-    assert len(reqs) == 3
-    for req in reqs:
-        qs = parse_qs(urlparse(str(req.url)).query)
-        span_ms = int(qs["endTime"][0]) - int(qs["startTime"][0])
-        assert span_ms <= 7 * 24 * 3600 * 1000
 
 
 @pytest.mark.httpx_mock(
