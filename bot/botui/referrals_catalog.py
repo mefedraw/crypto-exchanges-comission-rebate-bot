@@ -51,6 +51,7 @@ REFERRALS: tuple[ReferralEntry, ...] = (
         "https://www.binance.com/register?ref=ERH4KNEX",
         "ERH4KNEX",
         "20%",
+        pending=True,
         icon_custom_emoji_id="5402228118519851497",
         icon_emoji="💰",
     ),

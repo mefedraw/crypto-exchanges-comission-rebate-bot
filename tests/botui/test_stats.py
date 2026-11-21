@@ -23,6 +23,20 @@ from bot.db.models.payouts import Payout
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
+async def test_binance_missing_data_is_not_zero_or_another_accounts_balance():
+    zero = Decimal(0)
+    summary = service.BalanceSummary(zero, zero, zero, 0, zero, None, None, False)
+    accounts = [
+        ExchangeAccount(id=i, exchange=exchange, uid=str(i))
+        for i, exchange in enumerate(("binance", "binance", "gate"), start=1)
+    ]
+    text = stats.render_summary(summary, accounts, {2: {"USDT": (Decimal(5), Decimal(5))}})
+    first, second, third = (line for line in text.splitlines() if "<code>" in line)
+    assert "данные по UID пока недоступны" in first and "USDT" not in first
+    assert "5.00 USDT" in second and "недоступны" in second
+    assert "0.00 USDT" in third and "недоступны" not in third
+
+
 async def _user_with_account(
     session: AsyncSession, user_id: int, exchange: str = "bybit", uid: str = "U"
 ) -> ExchangeAccount:

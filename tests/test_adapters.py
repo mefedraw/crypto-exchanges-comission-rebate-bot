@@ -655,7 +655,6 @@ def test_demo_mode_builds_all_stub_adapters():
         "okx",
         "weex",
         "toobit",
-        "binance",
         "bitbase",
         "bitunix",
         "blofin",

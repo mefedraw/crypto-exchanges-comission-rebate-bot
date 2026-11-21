@@ -393,10 +393,10 @@ async def test_finalized_rows_not_repolled_or_overwritten(sessionmaker):
     assert len(lagging_rows) == 12  # July 20..31 inclusive, newly polled
 
 
-@pytest.mark.parametrize("paused", ["mexc", "bitget", "bitmart"])
+@pytest.mark.parametrize("paused", ["mexc", "bitget", "bitmart", "binance"])
 async def test_paused_exchange_does_not_block_same_user_or_create_zero(sessionmaker, paused):
     since = date(2026, 7, 10)
-    user_id = 99010 + ("mexc", "bitget", "bitmart").index(paused)
+    user_id = 99010 + ("mexc", "bitget", "bitmart", "binance").index(paused)
     paused_id = await _seed_user_account(sessionmaker, user_id, since, exchange=paused)
     active_id = await _seed_account(sessionmaker, user_id, "weex", since)
     worker = AccrualWorker(
@@ -405,6 +405,7 @@ async def test_paused_exchange_does_not_block_same_user_or_create_zero(sessionma
         now=lambda: _now_at(date(2026, 7, 11)),
         settings=make_settings(DISABLED_EXCHANGES="mexc,bitget"),
     )
+    await worker.run_cycle()
     await worker.run_cycle()
     async with sessionmaker() as session:
         rows = (

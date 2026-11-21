@@ -3,12 +3,10 @@
 Endpoint: GET /sapi/v1/apiReferral/rebate/recentRecord
 Docs: https://binance-docs.github.io/apiAgent-API-EN/api_rebate_endpoints_spot_EN/
 
-ELIGIBILITY: this endpoint is ONLY for accounts enrolled in Binance's Api-Agent /
-API Partner program — a plain affiliate referral link has NO API access to
-commission data (that lives only in the web Affiliate Portal). VERIFIED (live) on
-the configured account: the signed request returns HTTP 200 with an (empty, at
-setup time) JSON array, i.e. the account HAS apiReferral access; a non-agent
-account would get business code -2015 ("invalid API-key ... or permissions").
+Scope: Binance Link / Api-Agent, NOT Affiliate Referral Pro. A successful empty
+response does not establish that an invitee earned zero. The Referral Pro bot
+excludes this adapter from its live registry and worker until it has a verified
+source of invitee-level commission. See docs/binance-attribution.md.
 
 SHAPE (per docs): the response is a flat JSON ARRAY of per-trade rebate records,
 each ``{"customerId", "email", "income", "asset", "symbol", "time", "orderId",

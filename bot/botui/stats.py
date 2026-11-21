@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.botui import panel, service
 from bot.botui import repository as repo
 from bot.botui.keyboards import CabinetCB, menu_back_keyboard
+from bot.config import NO_UID_ATTRIBUTION
 from bot.db.models.identity import ExchangeAccount
 from bot.i18n import gettext as tr
 from bot.payout.expiry import PAYOUT_TZ
@@ -109,9 +110,17 @@ def render_summary(
         lines.append(tr("Ваши UID:"))
         for a in accounts:
             assets = account_month_assets.get(a.id, {})
+            month_amount = _fmt_account_month(assets)
+            if a.exchange in NO_UID_ATTRIBUTION:
+                unavailable = tr("данные по UID пока недоступны")
+                month_amount = (
+                    f"{month_amount} ({unavailable})"
+                    if any(native or usdt for native, usdt in assets.values())
+                    else unavailable
+                )
             lines.append(
                 tr("• {v0}: <code>{v1}</code> — за месяц {v2}").format(
-                    v0=escape(a.exchange), v1=escape(a.uid), v2=_fmt_account_month(assets)
+                    v0=escape(a.exchange), v1=escape(a.uid), v2=month_amount
                 )
             )
     else:

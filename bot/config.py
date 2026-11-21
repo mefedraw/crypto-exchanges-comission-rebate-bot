@@ -53,6 +53,9 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
 
 SPEC_BY_CODE: dict[str, ExchangeSpec] = {spec.code: spec for spec in EXCHANGE_SPECS}
 RETIRED_EXCHANGES = frozenset({"bitmart"})
+# Api-Agent customer IDs are not Affiliate Referral Pro invitee UIDs.
+# Enabling credentials or clearing an operational pause cannot make them equivalent.
+NO_UID_ATTRIBUTION = frozenset({"binance"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,7 +217,7 @@ class Settings(BaseSettings):
 
     @property
     def disabled_exchanges(self) -> frozenset[str]:
-        return frozenset(filter(None, self.disabled_exchanges_raw.split(",")))
+        return NO_UID_ATTRIBUTION.union(filter(None, self.disabled_exchanges_raw.split(",")))
 
     def exchange_enabled(self, code: str) -> bool:
         return code in SPEC_BY_CODE and code not in self.disabled_exchanges

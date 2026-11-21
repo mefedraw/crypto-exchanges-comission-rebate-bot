@@ -9,6 +9,9 @@ for unreleased work snapshots.
 
 ### Fixed
 
+- Binance Referral Pro accruals are on hold until a UID-attributed source is
+  reconciled. Linked accounts remain intact; missing commissions are not zeros.
+
 - WEEX now preserves exact timezone-aware query bounds at millisecond precision,
   with overlap-safe legacy UTC coverage at the UTC+8 accrual cutover.
 - Whole-channel WEEX totals discover UIDs from commissions instead of registration

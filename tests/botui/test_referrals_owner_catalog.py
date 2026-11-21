@@ -72,7 +72,7 @@ def test_owner_supplied_catalog_matches_details_and_buttons(slug, emoji, url, no
     text = referral_detail_text(slug)
     assert entry.icon_emoji in text and url in unescape(text)
     assert entry.ref_code in text
-    assert bool("В ожидании" in text) == (slug in {"bitget", "mexc"})
+    assert bool("В ожидании" in text) == (slug in {"bitget", "mexc", "binance"})
     buttons = [b for row in referral_menu_keyboard().inline_keyboard for b in row]
     button = next(b for b in buttons if b.callback_data == ReferralCB(slug=slug).pack())
     assert button.text.startswith(entry.name)
@@ -95,6 +95,6 @@ def test_risex_has_no_invented_percentage_or_dangling_separator():
 
 
 def test_pending_exchanges_are_explicit_but_keep_their_links():
-    assert {e.slug for e in REFERRALS if e.pending} == {"bitget", "mexc"}
-    for slug in ("bitget", "mexc"):
+    assert {e.slug for e in REFERRALS if e.pending} == {"bitget", "mexc", "binance"}
+    for slug in ("bitget", "mexc", "binance"):
         assert "<s>" in referral_detail_text(slug)
