@@ -109,9 +109,16 @@ def render_summary(
         lines.append(tr("Ваши UID:"))
         for a in accounts:
             assets = account_month_assets.get(a.id, {})
+            month_amount = _fmt_account_month(assets)
+            if a.exchange == "binance":
+                month_amount = (
+                    f"{month_amount} (1 USD = 1 USDT)"
+                    if assets
+                    else tr("данные по UID пока недоступны")
+                )
             lines.append(
                 tr("• {v0}: <code>{v1}</code> — за месяц {v2}").format(
-                    v0=escape(a.exchange), v1=escape(a.uid), v2=_fmt_account_month(assets)
+                    v0=escape(a.exchange), v1=escape(a.uid), v2=month_amount
                 )
             )
     else:

@@ -1,193 +1,184 @@
-"""Binance affiliate (Api-Agent) commission adapter.
-
-Endpoint: GET /sapi/v1/apiReferral/rebate/recentRecord
-Docs: https://binance-docs.github.io/apiAgent-API-EN/api_rebate_endpoints_spot_EN/
-
-ELIGIBILITY: this endpoint is ONLY for accounts enrolled in Binance's Api-Agent /
-API Partner program — a plain affiliate referral link has NO API access to
-commission data (that lives only in the web Affiliate Portal). VERIFIED (live) on
-the configured account: the signed request returns HTTP 200 with an (empty, at
-setup time) JSON array, i.e. the account HAS apiReferral access; a non-agent
-account would get business code -2015 ("invalid API-key ... or permissions").
-
-SHAPE (per docs): the response is a flat JSON ARRAY of per-trade rebate records,
-each ``{"customerId", "email", "income", "asset", "symbol", "time", "orderId",
-"tradeId"}``. ``income`` is the commission amount in ``asset`` (any coin: USDT,
-BNB, ...). Records are per-trade with an absolute ``time``, so summing disjoint
-windows is additive (unlike MEXC's per-invitee ``total``).
-
-WINDOW: startTime/endTime must BOTH be set with a span <= 7 days (docs) -> we slice
-into <=7-day windows. Signing: HMAC-SHA256 hex over the query string (incl.
-``timestamp``/``recvWindow``), appended as ``&signature=``; key in ``X-MBX-APIKEY``.
-
-# ASSUMED (not live-verified — the account has no invitees/commission yet): the
-# per-record field names above, that ``customerId`` filters server-side, that a
-# 1-day window returns that day's records, and plain-UTC (no UTC+8 shift) attribution.
-# Revisit against live data once the first referral trades.
-"""
+"""Binance Referral Pro. Performance and payable native commission are distinct."""
 
 from __future__ import annotations
 
-import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from time import time_ns
+from typing import Any
 from urllib.parse import urlencode
 
+import httpx
+
 from bot.config import ExchangeCredentials, Settings
-from bot.exchanges.base import CommissionResult, ExchangeApiError, ReferralCheck
-from bot.exchanges.base_http import BaseHttpAdapter
+from bot.exchanges.base import CommissionResult, ExchangeApiError, ExchangeAuthError, ReferralCheck
+from bot.exchanges.partner_http import (
+    PartnerHttpAdapter,
+    amount_of,
+    calendar_windows,
+    integer_of,
+    numeric_uid,
+    object_of,
+)
 from bot.exchanges.registry import register
 from bot.exchanges.signing import hmac_hex
-from bot.utils.dates import iter_windows, to_millis
-from bot.utils.money import parse_decimal
 
-_PATH = "/sapi/v1/apiReferral/rebate/recentRecord"
-_WINDOW_DAYS = 7  # VERIFIED (docs): startTime/endTime span must be <= 7 days.
-_LIMIT = 500  # VERIFIED (docs): max 500 records per call; no page/cursor param.
-_RECV_WINDOW = 5000
-# ASSUMED: the invitee id is `customerId`; extra names kept as a defensive fallback.
-_UID_FIELDS = ("customerId", "customerUid", "uid")
+_INVITEE = "/sapi/v1/affiliate/performance/invitee"
+_SUCCESS = "000000000"
+POLICY = "Binance Referral Pro: 1 USD = 1 USDT (правило бота, не валюта выплаты Binance)."
 
 
-class BinanceAdapter(BaseHttpAdapter):
+def _first_possible_day(profile: dict[str, Any]) -> date:
+    # Date-only reports do not identify a timezone. UTC-12 is the earliest possible
+    # calendar label; do not skip a trade on a boundary by assuming its timezone.
+    millis = integer_of(profile["regTime"])
+    if profile.get("firstTradeTime"):
+        millis = max(millis, integer_of(profile["firstTradeTime"]))
+    try:
+        return (datetime(1970, 1, 1, tzinfo=UTC) + timedelta(milliseconds=millis, hours=-12)).date()
+    except OverflowError as exc:
+        raise ExchangeApiError("Binance: invalid invitee timestamp") from exc
+
+
+def _commission(profile: dict[str, Any]) -> Decimal:
+    amount = amount_of(profile.get("commission"))
+    if amount < 0:
+        raise ExchangeApiError("Binance: negative performance commission")
+    return amount
+
+
+class _NotInvitee(ExchangeApiError):
+    """Binance explicitly rejected this UID's relationship to the authenticated affiliate."""
+
+
+class BinanceAdapter(PartnerHttpAdapter):
     name = "Binance"
     code = "binance"
-    base_url = "https://api.binance.com"  # VERIFIED: Binance spot/sapi REST host.
-    max_window_days = _WINDOW_DAYS
-    supports_uid_filter = True  # ASSUMED: `customerId` query param filters server-side.
-    supports_date_range = True
+    base_url = "https://api.binance.com"
+    min_request_interval_seconds = 0.75
+    # Operational buffer: API labels are calendar dates and recent statistics can change.
+    settlement_lag_days = 2
 
-    def _signed_query(self, params: dict[str, object]) -> str:
-        """Binance signing: signature = HMAC-SHA256-hex over the urlencoded query."""
-        query = urlencode(params)
+    def _prepare_request(
+        self, method: str, request_path: str, headers: dict[str, str] | None, content: str | None
+    ) -> tuple[str, dict[str, str], None]:
+        if method != "GET" or not request_path.startswith(_INVITEE + "?"):
+            raise ExchangeApiError("Binance: unexpected performance request")
+        path, _, query = request_path.partition("?")
+        # VERIFIED: sign the exact query, after pacing and again on each retry.
+        query += f"&timestamp={time_ns() // 1_000_000}&recvWindow=5000"
         signature = hmac_hex(self._creds.api_secret.get_secret_value(), query)
-        return f"{query}&signature={signature}"
+        return (
+            f"{path}?{query}&signature={signature}",
+            {"X-MBX-APIKEY": self._creds.api_key.get_secret_value()},
+            None,
+        )
 
-    def _headers(self) -> dict[str, str]:
-        return {
-            "X-MBX-APIKEY": self._creds.api_key.get_secret_value(),
-            "Accept": "application/json",
-        }
+    def _raise_client_error(self, status: int, response: httpx.Response) -> None:
+        body = self._safe_json(response)
+        if isinstance(body, dict):
+            code = str(body.get("code"))
+            # VERIFIED: only this business error is an authoritative membership rejection.
+            if status == 400 and code == "-29002":
+                raise _NotInvitee("Binance: invitee does not belong to affiliate (-29002)")
+            if code in {"-2014", "-2015", "-1022"}:
+                raise ExchangeAuthError("Binance: read key or signature rejected")
+        raise ExchangeApiError(f"Binance: performance request rejected (HTTP {status})")
+
+    async def _profile(self, uid: str, period: tuple[date, date] | None) -> dict[str, Any]:
+        uid = numeric_uid(uid)
+        params = {"userId": uid}
+        if period is not None:
+            start, end = period
+            if start > end:
+                raise ValueError("Binance: start date follows end date")
+            params.update(startDate=start.isoformat(), endDate=end.isoformat())
+        body = object_of(
+            await self._send("GET", f"{_INVITEE}?{urlencode(params)}", log_path=_INVITEE)
+        )
+        if body.get("code") != _SUCCESS or body.get("status") != "OK":
+            raise ExchangeApiError("Binance: unsuccessful performance response")
+        data = object_of(body.get("data"))
+        # VERIFIED: the success response is filtered by userId, not by Link customerId.
+        # A membership profile exists independently of activity in the selected period.
+        if (
+            integer_of(data.get("regTime")) == 0
+            or not isinstance(data.get("referralCode"), str)
+            or not data["referralCode"].strip()
+        ):
+            raise ExchangeApiError("Binance: incomplete invitee profile")
+        for key in ("userId", "uid", "inviteeUserId"):
+            if key in data and str(data[key]) != uid:
+                raise ExchangeApiError("Binance: invitee UID mismatch")
+        return data
+
+    async def verify_referral(self, uid: str) -> ReferralCheck:
+        try:
+            await self._profile(uid, None)
+        except _NotInvitee:
+            return ReferralCheck.NOT_REFERRAL
+        return ReferralCheck.CONFIRMED
+
+    async def get_reported_usd(self, uid: str, start: date, end: date) -> Decimal:
+        """Dashboard estimate for one explicit interval. Not a wallet movement."""
+        return _commission(await self._profile(uid, (start, end)))
+
+    async def accrual_start(self, uid: str, since: date) -> date | None:
+        try:
+            profile = await self._profile(uid, None)
+        except _NotInvitee:
+            return None
+        if "commission" not in profile and "tradeVol" not in profile:
+            # No lifetime metrics yet. Retry membership/metrics next cycle, without
+            # recording zeros or preventing another exchange of the same user accruing.
+            return None
+        _commission(profile)
+        return max(since, _first_possible_day(profile))
+
+    async def _same_totals(
+        self, uid: str, small: tuple[date, date], large: tuple[date, date]
+    ) -> bool:
+        a, b = await self._profile(uid, small), await self._profile(uid, large)
+        if any("commission" not in p or "tradeVol" not in p for p in (a, b)):
+            return False
+        return _commission(a) == _commission(b) and amount_of(a["tradeVol"]) == amount_of(
+            b["tradeVol"]
+        )
+
+    async def _window(self, uid: str, start: date, end: date) -> tuple[Decimal, int]:
+        profile = await self._profile(uid, (start, end))
+        if "commission" in profile:
+            return _commission(profile), 1
+        if "tradeVol" in profile:
+            raise ExchangeApiError("Binance: volume reported without commission")
+        earliest = _first_possible_day(profile)
+        if end < earliest:
+            return Decimal(0), 0
+        # VERIFIED: inactivity can omit both metrics. Accept a zero only with
+        # independent, equal dated totals covering exactly the missing interval.
+        anchor = max(earliest, end - timedelta(days=self.max_window_days - 1))
+        if anchor < start and await self._same_totals(
+            uid, (anchor, start - timedelta(days=1)), (anchor, end)
+        ):
+            return Decimal(0), 0
+        closed = datetime.now(UTC).date() - timedelta(days=1 + self.settlement_lag_days)
+        after = min(closed, start + timedelta(days=self.max_window_days - 1))
+        if end < after and await self._same_totals(
+            uid, (end + timedelta(days=1), after), (start, after)
+        ):
+            return Decimal(0), 0
+        raise ExchangeApiError("Binance: no independent confirmation for missing daily metrics")
 
     async def get_commission(
         self, uid: str, date_from: datetime, date_to: datetime
     ) -> CommissionResult:
-        result = self._new_result(uid, date_from, date_to)
-        self._log.info("get_commission", uid=uid, date_from=str(date_from), date_to=str(date_to))
-
-        for window_start, window_end in iter_windows(
-            date_from.date(), date_to.date(), self.max_window_days
-        ):
-            await self._collect_window(uid, window_start, window_end, result)
-
-        result.settlement_note = (
-            "Сумма комиссий Binance (apiReferral) за период. Требует Api-Agent доступа; "
-            "точные выплаты сверяйтесь с Affiliate Portal."
-        )
+        result = self._new_result(numeric_uid(uid), date_from, date_to)
+        for start, end in calendar_windows(date_from, date_to, self.max_window_days):
+            amount, count = await self._window(uid, start.date(), end.date())
+            result.add_amount("USDT", amount, source="Referral Pro USD (1:1)")
+            result.raw_records_count += count
+        result.settlement_note = POLICY
         return result.finalize()
-
-    async def _collect_window(
-        self,
-        uid: str | None,
-        window_start: datetime,
-        window_end: datetime,
-        result: CommissionResult,
-        usdt_only: bool = False,
-    ) -> Decimal:
-        """Query one <=7-day window. When ``uid`` is given, keep only that invitee's
-        records; when ``usdt_only`` is set, accumulate just the USDT total (for the
-        downline total) and return it. Otherwise add every asset line to ``result``."""
-        params: dict[str, object] = {
-            "startTime": to_millis(window_start),
-            "endTime": to_millis(window_end),
-            "limit": _LIMIT,
-            "recvWindow": _RECV_WINDOW,
-            "timestamp": int(time.time() * 1000),
-        }
-        if uid is not None:
-            params["customerId"] = uid  # ASSUMED (docs): server-side per-invitee filter.
-        request_path = f"{_PATH}?{self._signed_query(params)}"
-        payload = await self._send("GET", request_path, headers=self._headers(), log_path=_PATH)
-        rows = self._extract_rows(payload)
-        if len(rows) >= _LIMIT:
-            # No pagination on this endpoint: a full page may mean truncation.
-            self._log.warning("binance rebate page full — possible truncation", count=len(rows))
-
-        usdt_total = Decimal(0)
-        for row in rows:
-            if uid is not None and not self._row_matches_uid(row, uid):
-                continue
-            income = row.get("income")
-            if income in (None, ""):
-                continue
-            asset = str(row.get("asset", "")).upper()
-            amount = parse_decimal(str(income))
-            if usdt_only:
-                if asset == "USDT":
-                    usdt_total += amount
-            else:
-                if amount != Decimal(0):
-                    result.add_amount(asset or "USDT", amount)
-                result.raw_records_count += 1
-        return usdt_total
-
-    async def get_downline_total(self, date_from: datetime, date_to: datetime) -> Decimal | None:
-        """Whole-downline USDT rebate: the same endpoint WITHOUT ``customerId`` returns
-        every invitee's records; only the USDT bucket is summed (base contract).
-
-        # ASSUMED: omitting ``customerId`` returns all invitees (not live-verified —
-        # no invitees yet). Windowed <=7 days and additive over disjoint windows."""
-        self._log.info("get_downline_total", date_from=str(date_from), date_to=str(date_to))
-        result = self._new_result("", date_from, date_to)
-        total = Decimal(0)
-        for window_start, window_end in iter_windows(
-            date_from.date(), date_to.date(), self.max_window_days
-        ):
-            total += await self._collect_window(
-                None, window_start, window_end, result, usdt_only=True
-            )
-        return total
-
-    async def verify_referral(self, uid: str) -> ReferralCheck:
-        """Soft membership check: query the last <=7 days filtered to ``uid``. Any
-        record confirms; no record is UNVERIFIABLE (fail open) — the endpoint only
-        surfaces invitees who traded recently, so absence is not an authoritative
-        "not my referral" (a real referral who simply hasn't traded returns nothing).
-        """
-        end = datetime.now(UTC)
-        begin = end - timedelta(days=_WINDOW_DAYS - 1)
-        params: dict[str, object] = {
-            "customerId": uid,
-            "startTime": to_millis(begin),
-            "endTime": to_millis(end),
-            "limit": _LIMIT,
-            "recvWindow": _RECV_WINDOW,
-            "timestamp": int(time.time() * 1000),
-        }
-        request_path = f"{_PATH}?{self._signed_query(params)}"
-        payload = await self._send("GET", request_path, headers=self._headers(), log_path=_PATH)
-        rows = self._extract_rows(payload)
-        if any(self._row_matches_uid(row, uid) for row in rows):
-            return ReferralCheck.CONFIRMED
-        return ReferralCheck.UNVERIFIABLE
-
-    def _extract_rows(self, payload: object) -> list[dict[str, object]]:
-        """Success is a flat JSON array. A dict with a non-zero ``code`` is a Binance
-        business error (e.g. -2015 no permission) — raise so it is not silently 0."""
-        if isinstance(payload, list):
-            return [row for row in payload if isinstance(row, dict)]
-        if isinstance(payload, dict):
-            code = payload.get("code")
-            if code is not None and str(code) not in ("0", "200", "000000"):
-                raise ExchangeApiError(f"{self.name}: {code} {payload.get('msg')}")
-            data = payload.get("data")
-            if isinstance(data, list):
-                return [row for row in data if isinstance(row, dict)]
-        return []
-
-    @staticmethod
-    def _row_matches_uid(row: dict[str, object], uid: str) -> bool:
-        return any(str(row.get(field)) == uid for field in _UID_FIELDS)
 
 
 @register("binance")

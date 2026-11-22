@@ -7,7 +7,7 @@ rather than duplicating it.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, cast
 
@@ -22,9 +22,12 @@ from bot.db.models.ops import SystemFlag
 from bot.db.models.partners import PartnerEarning
 from bot.db.models.payouts import Payout
 from bot.partners.service import source_is_funded
+from bot.payout.commission import accrual_fee
+from bot.payout.expiry import PAYOUT_TZ
 from bot.payout.ranks import fee_pct
 
 PAYOUTS_PAUSED_KEY = "payouts_paused"
+_LINKED_GROSS_EXCHANGES = frozenset({"binance", "blofin"})
 
 
 async def get_flag(session: AsyncSession, key: str) -> dict[str, Any] | None:
@@ -52,6 +55,78 @@ async def is_payouts_paused(session: AsyncSession) -> bool:
     """True iff the kill-switch flag is set and its ``paused`` field is truthy."""
     flag = await get_flag(session, PAYOUTS_PAUSED_KEY)
     return bool((flag or {}).get("paused"))
+
+
+async def exchange_summary(session: AsyncSession) -> dict[str, Any] | None:
+    """Combine gross rebates from disjoint sources; fees are informational only."""
+    snapshot = await get_downline_snapshot(session)
+    if not snapshot:
+        return snapshot
+    raw = snapshot.get("per_exchange")
+    if not isinstance(raw, dict):
+        return snapshot
+    try:
+        through = date.fromisoformat(snapshot["through"])
+        refreshed = datetime.fromisoformat(snapshot["as_of"])
+    except (KeyError, TypeError, ValueError):
+        return snapshot  # A legacy snapshot without a closed-day window cannot be combined.
+    if refreshed.tzinfo is None or snapshot.get("month") != through.strftime("%Y-%m"):
+        return snapshot
+    first = through.replace(day=1)
+    as_of_day = refreshed.astimezone(PAYOUT_TZ).date()
+    if through >= as_of_day and not (through == as_of_day == first):
+        return snapshot
+    # On the first of the month the worker stores "through = first" for an empty period.
+    before = min(through + timedelta(days=1), as_of_day)
+    codes = _LINKED_GROSS_EXCHANGES.difference(snapshot.get("disabled") or ())
+    if not codes:
+        return snapshot
+    booked: dict[str, tuple[Decimal, Decimal, date | None]] = {
+        code: (Decimal(0), Decimal(0), None) for code in sorted(codes)
+    }
+    if first < before:
+        rows = await session.execute(
+            select(
+                ExchangeAccount.exchange,
+                func.sum(RebateAccrual.amount_usdt),
+                func.sum(RebateAccrual.commission_usdt),
+                func.max(RebateAccrual.accrual_date),
+            )
+            .select_from(RebateAccrual)
+            .join(ExchangeAccount, ExchangeAccount.id == RebateAccrual.account_id)
+            .where(
+                ExchangeAccount.exchange.in_(codes),
+                RebateAccrual.finalized.is_(True),
+                RebateAccrual.accrual_date >= first,
+                RebateAccrual.accrual_date < before,
+            )
+            .group_by(ExchangeAccount.exchange)
+        )
+        for code, gross, fee, latest in rows:
+            booked[code] = gross, fee, latest
+
+    # Exactly one source per exchange, even if an older snapshot has an API amount for it.
+    api = {k: v for k, v in raw.items() if k not in _LINKED_GROSS_EXCHANGES}
+    total = sum((Decimal(str(v)) for v in api.values()), Decimal(0)) + sum(
+        gross for gross, _, _ in booked.values()
+    )
+    return {
+        **snapshot,
+        "per_exchange": api,
+        "linked_uids": {
+            code: {
+                "gross": str(gross),
+                "fee": str(fee),
+                "last_day": last.isoformat() if last else None,
+            }
+            for code, (gross, fee, last) in booked.items()
+        },
+        "total_usdt": str(total),
+        **{
+            k: [code for code in (snapshot.get(k) or []) if code not in codes]
+            for k in ("errors", "unsupported", "guarded")
+        },
+    }
 
 
 async def admin_overview(
@@ -161,9 +236,7 @@ async def admin_overview(
         # USDT part of all-time payouts = total - MNT part (keeps legacy NULL-asset as USDT).
         "paid_usdt": Decimal(paid_sum or 0) - Decimal(paid_mnt_usdt or 0),
         "paused": await is_payouts_paused(session),
-        # Whole-downline rebate snapshot (all referrals incl. unregistered), refreshed
-        # by the accrual worker. None until the first cycle has run.
-        "downline": await get_downline_snapshot(session),
+        "downline": await exchange_summary(session),
     }
 
 
@@ -305,8 +378,9 @@ async def recompute_current_month_unpaid(
     updated.
     """
     rows = (
-        await session.scalars(
-            select(RebateAccrual)
+        await session.execute(
+            select(RebateAccrual, ExchangeAccount.exchange)
+            .join(ExchangeAccount, ExchangeAccount.id == RebateAccrual.account_id)
             .where(
                 RebateAccrual.user_id == user_id,
                 RebateAccrual.accrual_date >= m_start,
@@ -315,16 +389,19 @@ async def recompute_current_month_unpaid(
                 RebateAccrual.correction_key.is_(None),
                 RebateAccrual.effective_rank >= 1,
             )
-            .with_for_update()
+            .with_for_update(of=RebateAccrual)
         )
     ).all()
     n = 0
-    for r in rows:
+    for r, exchange in rows:
         # The source row is locked first; this separate read also observes an
         # allocation committed while the SELECT FOR UPDATE was waiting.
         if await source_is_funded(session, r.id):
             continue
-        fee = pct if pct is not None else fee_pct(r.effective_rank)
+        if exchange == "binance":
+            fee = accrual_fee(r.effective_rank, pct, exchange, r.accrual_date)
+        else:
+            fee = pct if pct is not None else fee_pct(r.effective_rank)
         r.fee_pct = fee
         r.commission_usdt = r.amount_usdt * fee
         r.net_usdt = r.amount_usdt - r.commission_usdt

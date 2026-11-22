@@ -37,6 +37,17 @@ def test_unknown_pause_fails_closed():
         make_settings(DISABLED_EXCHANGES="mexcc")
 
 
+async def test_binance_key_enables_per_invitee_adapter_unless_paused():
+    settings = make_settings(DISABLED_EXCHANGES="", BINANCE_API_KEY="key", BINANCE_API_SECRET="s")
+    adapter = build_adapter(settings, "binance")
+    assert adapter is not None and adapter.code == "binance"
+    await adapter.aclose()
+    paused = make_settings(
+        DISABLED_EXCHANGES="binance", BINANCE_API_KEY="k", BINANCE_API_SECRET="s"
+    )
+    assert build_adapter(paused, "binance") is None
+
+
 def test_demo_mode_honors_pause_and_removal():
     settings = make_settings(DEMO_MODE=True, DISABLED_EXCHANGES="mexc,bitget")
     assert {"mexc", "bitget", "bitmart"}.isdisjoint(build_adapters(settings))

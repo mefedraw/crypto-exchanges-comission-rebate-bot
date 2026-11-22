@@ -45,7 +45,7 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
     ExchangeSpec("bybit", "Bybit"),
     ExchangeSpec("weex", "WEEX", requires_passphrase=True),
     ExchangeSpec("toobit", "Toobit"),  # Binance-style; key+secret, no passphrase.
-    ExchangeSpec("binance", "Binance"),  # Api-Agent apiReferral; key+secret, no passphrase.
+    ExchangeSpec("binance", "Binance"),  # Referral Pro read key, not Binance Link.
     ExchangeSpec("bitunix", "Bitunix"),
     ExchangeSpec("bitbase", "BitBase"),
     ExchangeSpec("blofin", "BloFin", requires_passphrase=True),

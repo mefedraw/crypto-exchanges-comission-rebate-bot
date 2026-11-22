@@ -19,8 +19,44 @@ from bot.botui import service, stats
 from bot.db.models.identity import ExchangeAccount, User, Wallet
 from bot.db.models.ledger import RankHistory, RebateAccrual
 from bot.db.models.payouts import Payout
+from bot.i18n import LANGUAGES, use_locale
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+
+async def test_binance_missing_data_is_not_zero_or_another_accounts_balance():
+    zero = Decimal(0)
+    summary = service.BalanceSummary(zero, zero, zero, 0, zero, None, None, False)
+    accounts = [
+        ExchangeAccount(id=i, exchange=exchange, uid=str(i))
+        for i, exchange in enumerate(("binance", "binance", "gate"), start=1)
+    ]
+    text = stats.render_summary(summary, accounts, {2: {"USDT": (Decimal(5), Decimal(5))}})
+    first, second, third = (line for line in text.splitlines() if "<code>" in line)
+    assert "данные по UID пока недоступны" in first and "USDT" not in first
+    assert "5.00 USDT" in second and "1 USD = 1 USDT" in second and "недоступны" not in second
+    assert "0.00 USDT" in third and "недоступны" not in third
+
+
+@pytest.mark.parametrize("locale", LANGUAGES)
+async def test_binance_user_sees_net_balance_without_a_special_fee_notice(locale: str):
+    summary = service.BalanceSummary(
+        Decimal("100"), Decimal("89"), Decimal("11"), 1, Decimal(".11"), None, None, True
+    )
+    amounts = {1: {"USDT": (Decimal("100"), Decimal("100"))}}
+    with use_locale(locale):
+
+        def render(exchange: str) -> str:
+            return stats.render_summary(
+                summary, [ExchangeAccount(id=1, exchange=exchange, uid="123")], amounts
+            )
+
+        binance, gate = render("binance"), render("gate")
+    assert "<b>89.00 USDT</b>" in binance and "11.00 USDT" not in binance
+    assert "1 USD = 1 USDT" in binance
+    assert [line for line in binance.splitlines() if "<code>" not in line] == [
+        line for line in gate.splitlines() if "<code>" not in line
+    ]
 
 
 async def _user_with_account(

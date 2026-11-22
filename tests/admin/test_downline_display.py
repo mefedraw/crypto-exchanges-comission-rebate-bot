@@ -36,6 +36,28 @@ def test_format_downline_tolerates_bad_as_of() -> None:
     assert "0.00 USDT" in text
 
 
+def test_format_mixed_total_distinguishes_bot_fee_from_exchange_rebate() -> None:
+    snap = {
+        "month": "2026-08",
+        "through": "2026-08-07",
+        "as_of": "2026-08-08T01:05:00+00:00",
+        "per_exchange": {"gate": "10"},
+        "linked_uids": {
+            "binance": {"gross": "23.45", "fee": "2.345", "last_day": "2026-08-06"},
+            "blofin": {"gross": "0", "fee": "0", "last_day": None},
+        },
+        "total_usdt": "33.45",
+        "errors": ["toobit"],
+    }
+    text = _format_downline(snap)
+    assert "<b>Сводка по биржам</b>" in text and "<b>33.45 USDT</b>" in text
+    assert "со всей базы по данным бирж (на 08.08 09:05)" in text
+    assert "в итог входит брутто" in text
+    assert "Binance: брутто 23.45 · из них сбор 2.35 (последняя запись 06.08)" in text
+    assert "BloFin: брутто 0.00 · из них сбор 0.00 (нет начислений)" in text
+    assert "Нет данных: toobit" in text
+
+
 def test_format_downline_period_ends_at_through_date() -> None:
     # When `through` (last CLOSED day covered) is present, the period end is that
     # date — NOT the as_of update time (which is later, still the current day).

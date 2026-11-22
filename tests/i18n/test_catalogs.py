@@ -54,7 +54,7 @@ def test_catalog_is_complete_and_preserves_formatting_numbers_and_html(locale):
     source = engine.locales["ru"]._catalog
     catalog = engine.locales[locale]._catalog
     assert set(catalog) == set(source)
-    assert len(catalog) == 228
+    assert len(catalog) == 229
     for key, translated in catalog.items():
         if not key:
             continue

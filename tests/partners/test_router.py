@@ -78,6 +78,8 @@ async def test_private_dashboard_rank_alternatives_and_explicit_withdrawal(db_se
         await click(module.PartnerCB(action="ranks").pack())
         ranks = [m for m in methods if isinstance(m, EditMessageText)][-1]
         assert " или " in ranks.text and "10000+ USDT" in ranks.text and "0%" in ranks.text
+        assert "Вознаграждение выплачивает владелец" in ranks.text
+        assert "сбора владельца" not in ranks.text
         await click(module.PartnerCB(action="withdraw").pack())
         preview = [m for m in methods if isinstance(m, EditMessageText)][-1]
         assert "20.00 USDT" in preview.text and "BEP20" in preview.text

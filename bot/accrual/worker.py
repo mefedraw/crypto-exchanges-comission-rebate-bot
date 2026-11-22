@@ -25,7 +25,7 @@ from bot.config import RETIRED_EXCHANGES, Settings, get_settings
 from bot.exchanges.base import ExchangeAdapter
 from bot.notifications import repository as notif_repo
 from bot.partners import rank_control
-from bot.payout.commission import effective_fee
+from bot.payout.commission import accrual_fee
 from bot.payout.expiry import PAYOUT_TZ, available_at, expires_at
 from bot.payout.rank_timing import (
     day_effective_rank,
@@ -454,9 +454,18 @@ class AccrualWorker:
         current_month: date,
         now: datetime,
     ) -> None:
-        pollable = [acc for acc in accounts if acc.exchange not in self._disabled_exchanges]
+        eligible_since: dict[int, date] = {}
+        for acc in accounts:
+            if acc.exchange in self._disabled_exchanges:
+                continue
+            adapter = self._provider.get(acc.exchange)
+            since = await adapter.accrual_start(acc.uid, max(self._epoch, acc.accrual_since))
+            if since is not None:
+                eligible_since[acc.id] = max(since, self._epoch, acc.accrual_since)
+        pollable = [acc for acc in accounts if acc.id in eligible_since]
         if not pollable:
             return
+        exchange_by_id = {acc.id: acc.exchange for acc in pollable}
         # Settlement lag: if ANY of this user's exchanges credits commission late
         # (e.g. KuCoin), defer this user's whole recent window by the largest such lag —
         # never freeze a day whose data hasn't settled. Whole-user (not per-account) so a
@@ -479,7 +488,7 @@ class AccrualWorker:
         for acc in pollable:
             last_fin = await repo.last_finalized_day(session, acc.id)
             nxt = (last_fin + timedelta(days=1)) if last_fin else acc.accrual_since
-            starts.append(max(nxt, self._epoch, acc.accrual_since))
+            starts.append(max(nxt, eligible_since[acc.id]))
         if not starts:
             return
         start = min(starts)
@@ -556,7 +565,7 @@ class AccrualWorker:
                     # existing row(s) stay untouched.
                     day_amount += reused
                     continue
-                if acc.exchange in self._disabled_exchanges:
+                if acc.id not in eligible_since or d < eligible_since[acc.id]:
                     # A pause is missing data, not a successful zero. Keep its
                     # history for ranks, but do not advance or freeze this account.
                     continue
@@ -656,7 +665,7 @@ class AccrualWorker:
                         )
                         else None
                     )
-                    fee = effective_fee(rank, day_override)
+                    fee = accrual_fee(rank, day_override, exchange_by_id[acc_id], d)
                     commission = usdt_equiv * fee
                     net = usdt_equiv - commission
                     net_native = native - native * fee

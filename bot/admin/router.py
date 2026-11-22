@@ -35,7 +35,7 @@ from bot.admin.wallet_balance import build_bsc_balance_reader, build_mantle_bala
 from bot.botui import panel
 from bot.botui import repository as botui_repo
 from bot.botui.repository import write_audit
-from bot.config import get_settings
+from bot.config import SPEC_BY_CODE, get_settings
 from bot.db.models.payouts import Payout
 from bot.payout.expiry import PAYOUT_TZ
 from bot.payout.rank_timing import month_start, next_month_start
@@ -100,10 +100,9 @@ async def _panel_text_result(
 
 
 def _format_downline(snapshot: dict[str, Any] | None) -> str:
-    """Render the whole-downline monthly rebate block (all referrals, incl. those not
-    registered in the bot) for the admin stats, from the worker's saved snapshot."""
+    """Distinguish exchange-reported rebate from the bot's fee on linked UIDs."""
     if not snapshot:
-        return "\n\n💹 Рефбек со ВСЕЙ базы: ещё не посчитано (обновится в ближайший цикл)."
+        return "\n\n💹 Сводка по биржам: ещё не посчитано (обновится в ближайший цикл)."
     total = format_2dp(Decimal(str(snapshot.get("total_usdt", "0"))))
     as_of_dt: datetime | None = None
     try:
@@ -129,16 +128,43 @@ def _format_downline(snapshot: dict[str, Any] | None) -> str:
         period = f"с 01.{mon}.{year} по {end_dt:%d.%m.%Y}"
     else:
         period = "за текущий месяц"
+    linked = snapshot.get("linked_uids") or {}
+    if (
+        linked
+        and through_dt
+        and as_of_dt
+        and through_dt.day == 1
+        and through_dt.date() == as_of_dt.date()
+    ):
+        period = f"{through_dt:%d.%m.%Y}, закрытых дней пока нет"
     per: dict[str, str] = snapshot.get("per_exchange", {}) or {}
+    title = "Сводка по биржам" if linked else "Рефбек со ВСЕЙ базы"
+    stamp = "" if linked else f"  (обновлено {as_of})"
     lines = [
-        f"\n\n💹 <b>Рефбек со ВСЕЙ базы</b> ({period}, UTC+8):",
-        f"• Всего: <b>{total} USDT</b>  (обновлено {as_of})",
+        f"\n\n💹 <b>{title}</b> ({period}, UTC+8):",
+        f"• Всего: <b>{total} USDT</b>{stamp}",
     ]
     if per:
+        if linked:
+            lines.append(f"Рефбек со всей базы по данным бирж (на {as_of}):")
         lines.append(
             "  "
             + " · ".join(f"{code} {format_2dp(Decimal(str(v)))}" for code, v in sorted(per.items()))
         )
+    if linked:
+        lines.append("Привязанные UID (USDT, в итог входит брутто):")
+        for code, amounts in sorted(linked.items()):
+            latest = amounts["last_day"]
+            note = (
+                f"последняя запись {datetime.fromisoformat(latest):%d.%m}"
+                if latest
+                else "нет начислений"
+            )
+            fee = format_2dp(Decimal(amounts["fee"]))
+            gross = format_2dp(Decimal(amounts["gross"]))
+            lines.append(
+                f"  {SPEC_BY_CODE[code].label}: брутто {gross} · из них сбор {fee} ({note})"
+            )
     missing = sorted(set((snapshot.get("errors") or []) + (snapshot.get("unsupported") or [])))
     if missing:
         lines.append(f"⚠️ Нет данных: {', '.join(missing)}")
