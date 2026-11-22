@@ -9,6 +9,8 @@ for unreleased work snapshots.
 
 ### Fixed
 
+- Removed the Binance fee notice from the user cabinet in all languages.
+  The user sees their net balance; internal fee detail stays in admin reporting.
 - The admin exchange summary includes the booked gross of linked Binance and
   BloFin UIDs for the displayed closed days. Their booked fee is shown separately,
   never added twice. Other exchanges retain their whole-network figures.

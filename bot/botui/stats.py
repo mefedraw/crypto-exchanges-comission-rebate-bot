@@ -17,7 +17,6 @@ from bot.botui import repository as repo
 from bot.botui.keyboards import CabinetCB, menu_back_keyboard
 from bot.db.models.identity import ExchangeAccount
 from bot.i18n import gettext as tr
-from bot.payout.commission import BINANCE_SURCHARGE_FROM
 from bot.payout.expiry import PAYOUT_TZ
 from bot.payout.rank_timing import month_start, next_month_start
 from bot.payout.ranks import rank_label
@@ -121,12 +120,6 @@ def render_summary(
                 tr("• {v0}: <code>{v1}</code> — за месяц {v2}").format(
                     v0=escape(a.exchange), v1=escape(a.uid), v2=month_amount
                 )
-            )
-        if any(a.exchange == "binance" for a in accounts):
-            lines.append(
-                tr(
-                    "Binance: с {v0} (UTC+8) к обычному сбору добавляется 1 процентный пункт."
-                ).format(v0=BINANCE_SURCHARGE_FROM.isoformat())
             )
     else:
         lines.append(tr("UID пока не добавлены — привяжите биржу через «🆔 UID биржи»."))
