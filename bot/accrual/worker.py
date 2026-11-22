@@ -454,7 +454,15 @@ class AccrualWorker:
         current_month: date,
         now: datetime,
     ) -> None:
-        pollable = [acc for acc in accounts if acc.exchange not in self._disabled_exchanges]
+        eligible_since: dict[int, date] = {}
+        for acc in accounts:
+            if acc.exchange in self._disabled_exchanges:
+                continue
+            adapter = self._provider.get(acc.exchange)
+            since = await adapter.accrual_start(acc.uid, max(self._epoch, acc.accrual_since))
+            if since is not None:
+                eligible_since[acc.id] = max(since, self._epoch, acc.accrual_since)
+        pollable = [acc for acc in accounts if acc.id in eligible_since]
         if not pollable:
             return
         # Settlement lag: if ANY of this user's exchanges credits commission late
@@ -479,7 +487,7 @@ class AccrualWorker:
         for acc in pollable:
             last_fin = await repo.last_finalized_day(session, acc.id)
             nxt = (last_fin + timedelta(days=1)) if last_fin else acc.accrual_since
-            starts.append(max(nxt, self._epoch, acc.accrual_since))
+            starts.append(max(nxt, eligible_since[acc.id]))
         if not starts:
             return
         start = min(starts)
@@ -556,7 +564,7 @@ class AccrualWorker:
                     # existing row(s) stay untouched.
                     day_amount += reused
                     continue
-                if acc.exchange in self._disabled_exchanges:
+                if acc.id not in eligible_since or d < eligible_since[acc.id]:
                     # A pause is missing data, not a successful zero. Keep its
                     # history for ranks, but do not advance or freeze this account.
                     continue

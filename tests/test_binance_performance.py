@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock
 
@@ -141,11 +141,52 @@ async def test_other_errors_never_reject_membership_or_leak_body(
     assert "sensitive-test-marker" not in str(caught.value)
 
 
-async def test_payout_and_whole_downline_are_not_sourced_from_performance(adapter, httpx_mock):
-    with pytest.raises(ExchangeApiError, match="settlement amount and asset"):
-        await adapter.get_commission("123", day_start(_DAY), day_end(_DAY))
+async def test_dated_invitee_only_fixed_rate_no_downline(adapter, httpx_mock):
+    httpx_mock.add_response(json=envelope(commission="2.34567"))
+    httpx_mock.add_response(json=envelope(commission="3.00003"))
+    end = _DAY + timedelta(days=30)
+    result = await adapter.get_commission("123", day_start(_DAY), day_end(end))
+    assert [(line.asset, line.amount) for line in result.lines] == [("USDT", Decimal("5.34570"))]
+    assert result.total_usdt is None and "1 USD = 1 USDT" in result.settlement_note
+    assert [
+        (r.url.params["startDate"], r.url.params["endDate"]) for r in httpx_mock.get_requests()
+    ] == [
+        (_DAY.isoformat(), (end - timedelta(days=1)).isoformat()),
+        (end.isoformat(), end.isoformat()),
+    ]
     assert await adapter.get_downline_total(day_start(_DAY), day_end(_DAY)) is None
-    assert httpx_mock.get_requests() == []
+
+
+@pytest.mark.parametrize("status,payload", [(200, envelope()), (400, {"code": -29002})])
+async def test_no_payable_profile_is_retried_next_cycle(adapter, httpx_mock, status, payload):
+    httpx_mock.add_response(status_code=status, json=payload)
+    assert await adapter.accrual_start("123", _DAY) is None
+
+
+async def test_volume_without_commission_is_not_zero(adapter, httpx_mock):
+    httpx_mock.add_response(json=envelope(tradeVol="125"))
+    with pytest.raises(ExchangeApiError, match="without commission"):
+        await adapter.get_commission("123", day_start(_DAY), day_end(_DAY))
+
+
+@pytest.mark.parametrize("matches", [True, False])
+async def test_omitted_day_requires_unchanged_commission_and_volume(
+    adapter, httpx_mock, monkeypatch, matches
+):
+    monkeypatch.setattr(adapter, "_pace_request", AsyncMock())
+    totals = {"commission": "1.2", "tradeVol": "500"}
+    httpx_mock.add_response(json=envelope())
+    for _ in range(1 if matches else 2):
+        httpx_mock.add_response(json=envelope(**totals))
+        httpx_mock.add_response(
+            json=envelope(commission="1.2", tradeVol="500" if matches else "501")
+        )
+    if matches:
+        result = await adapter.get_commission("123", day_start(_DAY), day_end(_DAY))
+        assert result.lines[0].amount == 0 and result.raw_records_count == 0
+    else:
+        with pytest.raises(ExchangeApiError, match="no independent confirmation"):
+            await adapter.get_commission("123", day_start(_DAY), day_end(_DAY))
 
 
 async def test_reject_invalid_input_before_signing(adapter, httpx_mock):

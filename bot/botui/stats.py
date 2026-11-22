@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.botui import panel, service
 from bot.botui import repository as repo
 from bot.botui.keyboards import CabinetCB, menu_back_keyboard
-from bot.config import NO_NATIVE_PAYOUT_DATA
 from bot.db.models.identity import ExchangeAccount
 from bot.i18n import gettext as tr
 from bot.payout.expiry import PAYOUT_TZ
@@ -111,12 +110,11 @@ def render_summary(
         for a in accounts:
             assets = account_month_assets.get(a.id, {})
             month_amount = _fmt_account_month(assets)
-            if a.exchange in NO_NATIVE_PAYOUT_DATA:
-                unavailable = tr("данные по UID пока недоступны")
+            if a.exchange == "binance":
                 month_amount = (
-                    f"{month_amount} ({unavailable})"
-                    if any(native or usdt for native, usdt in assets.values())
-                    else unavailable
+                    f"{month_amount} (1 USD = 1 USDT)"
+                    if assets
+                    else tr("данные по UID пока недоступны")
                 )
             lines.append(
                 tr("• {v0}: <code>{v1}</code> — за месяц {v2}").format(

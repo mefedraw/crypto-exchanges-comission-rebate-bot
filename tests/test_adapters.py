@@ -579,6 +579,7 @@ def test_demo_mode_builds_all_stub_adapters():
 
     adapters = build_adapters(make_settings(DEMO_MODE="true"))
     assert set(adapters) == {
+        "binance",
         "bitget",
         "bybit",
         "gate",

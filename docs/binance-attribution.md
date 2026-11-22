@@ -1,59 +1,37 @@
-# Binance Referral Pro: reconciliation before enabling accruals
+# Binance Referral Pro
 
-Binance Link (Api-Agent) customer IDs do not establish Referral Pro invitee
-ownership. The Spot taxQuery response has no invitee UID. Never assign these
-account-level amounts to a bot user, even if only one UID is linked.
+The bot credits **one gross USDT per USD of dated invitee commission**. This
+is an explicit owner-funded accounting policy, not a market quote or evidence
+that the exchange transferred USDT. No BNB, USDC or other wallet entries are
+added on top. See [Binance's explanation of display valuation and settlement](https://www.binance.com/en-BH/support/faq/detail/63572e23acda4bc891fd605e93335669).
 
-The signed read-only `GET /sapi/v1/affiliate/performance/invitee` takes
-`userId`, and optionally inclusive `startDate` and `endDate` as YYYY-MM-DD.
-Verified from the worker IP against linked accounts on 2026-11-21: a member
-returns HTTP 200, code `000000000`, and an invitee profile; for two other
-bindings Binance returned HTTP 400, code `-29002` (not this affiliate's
-invitee). Do not use a timeout, parse error, or authentication failure as a
-negative membership decision. The dashboard USD amounts matched both the
-period and lifetime readings to the precision displayed. The API has no asset,
-distribution status, or transaction identity. A missing amount is not zero.
+Use the signed read-only `GET /sapi/v1/affiliate/performance/invitee` with
+`userId`, inclusive `startDate` and `endDate` (YYYY-MM-DD). A successful
+profile has registration time and referral code; reject conflicting UID,
+malformed payloads, negative or nonfinite commission. Only HTTP 400/-29002
+means the UID does not belong to this affiliate. A rejection or a profile
+without lifetime activity is rechecked later; neither creates zero rows or
+blocks siblings. Never attribute Binance Link, wallet dividends, referral-code
+totals or a whole-downline rollup to any individual.
 
-The [Affiliate Performance SDK implementation](https://github.com/JKorf/Binance.Net/pull/1598)
-was contributed using documentation from Binance Business Development. Its
-other method is grouped by referral code, not by payout transaction.
-[Binance describes the default USDC settlement and the separate USD display valuation](https://www.binance.com/en-BH/support/faq/detail/63572e23acda4bc891fd605e93335669).
-Neither the default currency nor an original BNB trading fee makes the USD
-display amount the native amount received. Do not join independent reports by
-timestamp or approximate value. The [Spot wallet dividend endpoint](https://developers.binance.com/docs/wallet/asset/assets-divided-record)
-does return an amount and asset, but its entries do not identify the invitee.
-The [USD-M income history](https://developers.binance.com/docs/derivatives/usds-margined-futures/account/rest-api/Get-Income-History)
-also lacks an invitee UID: on our read-only check the `REFERRAL_KICKBACK`
-records contained a masked address in `info`. A masked address, trade ID or
-wallet transaction ID is not proof of ownership of an invitee UID.
+The worker uses closed calendar labels and a two-day settlement buffer (or a
+longer lag from a sibling exchange). Missing commission is not zero: absent
+metrics need proof from registration or matching dated gross **and volume**
+with and without the missing interval. Ambiguous data remains unresolved.
+Historical ranks, next-day upgrades and ordinary fee overrides apply.
 
-Keep the payout hold until the API or the official **My Commission > Commission
-Rebate** report identifies actual distributions by invitee and asset. Do not
-import **Shared Commissions** or a Users/Performance export as a payout report.
-Binance's [referral settlement announcement](https://www.binance.com/en/support/announcement/detail/9490ef81489844a6babc385eba238d75)
-describes where to find the original token, quantity and actual converted USDC
-for the covered Spot and Margin products. Do not apply that settlement rule to
-Futures without matching distribution records.
-No exchange keys, login cookies or HAR files should be shared. Links, bindings
-and historical ledger rows are not removed by the hold.
+## Reviewed historical cutover
 
-Before posting any corrections:
-
-1. Confirm the referrer's account and program, report timezone, coverage,
-   settlement lag, archive limits, and documented meaning of the amounts.
-   Require the invitee UID, amount and asset, transaction date, reward type,
-   status and a stable identity for deduplication; reject partial pages.
-2. Match each UID to its eligible binding and dates. Exclude the invitee's own
-   kickbacks, failed rewards, duplicates and unrelated accounts. Group by day
-   and asset with Decimal. USD display values, USDC, BNB and USDT are not
-   interchangeable. Do not convert assets without an approved valuation policy.
-3. Reconcile a closed period against the partner dashboard for each UID.
-   Dry-run a per-user difference against the actual ledger (all states and past
-   corrections) using the applicable historical rank, fee and override. Review
-   effects on other exchanges' ranks, partner rewards, and expiry of old claims.
-4. Review the preview before posting uniquely keyed corrections. Reconcile
-   overlapping exports and normal worker coverage; a second identical run must
-   add nothing. Never edit paid rows or trigger a transfer as part of import.
-5. Only resume automatic accrual after pagination, delayed settlement,
-   UTC+8 boundaries, mixed-user failures and retry idempotency are tested
-   against the verified source.
+1. Run `python -m bot.accrual.binance_recovery --through YYYY-MM-DD` from a
+   worker environment. It reads all active Binance bindings, compares daily
+   gross against separately fetched range reports and calculates the fees
+   including sibling accruals. Production dry-run uses read-only transactions.
+2. Stop the accrual worker for the cutover. Review per-UID gross, new net, and
+   rejected UIDs. Run the same command with `--apply-digest <reviewed digest>`.
+   Changed source, mismatched prior credits, unresolved sibling fee changes
+   or historical referral-share ambiguity block posting. No network calls
+   while holding ledger locks. No wallet transfer takes place.
+3. Run a fresh read-only preview: new rows and net must both be zero.
+   Inspect the audit record and available balance, then resume the worker.
+   Original earning dates are retained; only newly recovered rows receive a
+   fresh 30-day claim window. Never re-open a paid row or reset its expiry.

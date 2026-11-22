@@ -1,7 +1,7 @@
 # tests/accrual/test_worker.py
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -403,7 +403,7 @@ async def test_paused_exchange_does_not_block_same_user_or_create_zero(sessionma
         sessionmaker,
         MappingAdapterProvider({"weex": FakeAdapter({since: Decimal("50")})}),
         now=lambda: _now_at(date(2026, 7, 11)),
-        settings=make_settings(DISABLED_EXCHANGES="mexc,bitget"),
+        settings=make_settings(DISABLED_EXCHANGES="mexc,bitget,binance"),
     )
     await worker.run_cycle()
     await worker.run_cycle()
@@ -415,6 +415,29 @@ async def test_paused_exchange_does_not_block_same_user_or_create_zero(sessionma
         assert await acc_repo.last_finalized_day(session, paused_id) is None
         account = await session.get(ExchangeAccount, paused_id)
         assert account.status == "active" and account.accrual_since == since
+
+
+async def test_nonmember_binance_uid_does_not_advance_or_delay_sibling(sessionmaker):
+    class Deferred(RaisingAdapter):
+        settlement_lag_days = 2
+
+        async def accrual_start(self, uid, since):
+            return None
+
+    day = date(2026, 7, 10)
+    pending = await _seed_user_account(sessionmaker, 99022, day, exchange="binance")
+    sibling = await _seed_account(sessionmaker, 99022, "weex", day)
+    worker = AccrualWorker(
+        sessionmaker,
+        MappingAdapterProvider({"binance": Deferred(), "weex": FakeAdapter({day: Decimal("1")})}),
+        now=lambda: _now_at(day + timedelta(days=1)),
+        settings=make_settings(),
+    )
+    await worker.run_cycle()
+    await worker.run_cycle()
+    async with sessionmaker() as s:
+        assert await acc_repo.last_finalized_day(s, pending) is None
+        assert await acc_repo.last_finalized_day(s, sibling) == day
 
 
 async def test_fully_paused_user_needs_no_adapter_and_produces_no_alert(sessionmaker):

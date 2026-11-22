@@ -24,7 +24,7 @@ def test_pause_normalizes_names_and_preserves_credentials():
         GATE_API_KEY="key",
         GATE_API_SECRET="secret",
     )
-    assert settings.disabled_exchanges == {"binance", "mexc", "bitget"}
+    assert settings.disabled_exchanges == {"mexc", "bitget"}
     assert set(settings.available_exchanges) == {"gate"}
     assert settings.mexc_api_key.get_secret_value() == "key"
     assert settings.bitget_api_secret.get_secret_value() == "secret"
@@ -37,11 +37,15 @@ def test_unknown_pause_fails_closed():
         make_settings(DISABLED_EXCHANGES="mexcc")
 
 
-def test_binance_key_cannot_enable_unattributed_rebates():
+async def test_binance_key_enables_per_invitee_adapter_unless_paused():
     settings = make_settings(DISABLED_EXCHANGES="", BINANCE_API_KEY="key", BINANCE_API_SECRET="s")
-    assert not settings.exchange_enabled("binance")
-    assert "binance" not in settings.available_exchanges
-    assert build_adapter(settings, "binance") is None
+    adapter = build_adapter(settings, "binance")
+    assert adapter is not None and adapter.code == "binance"
+    await adapter.aclose()
+    paused = make_settings(
+        DISABLED_EXCHANGES="binance", BINANCE_API_KEY="k", BINANCE_API_SECRET="s"
+    )
+    assert build_adapter(paused, "binance") is None
 
 
 def test_demo_mode_honors_pause_and_removal():

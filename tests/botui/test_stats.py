@@ -33,7 +33,7 @@ async def test_binance_missing_data_is_not_zero_or_another_accounts_balance():
     text = stats.render_summary(summary, accounts, {2: {"USDT": (Decimal(5), Decimal(5))}})
     first, second, third = (line for line in text.splitlines() if "<code>" in line)
     assert "данные по UID пока недоступны" in first and "USDT" not in first
-    assert "5.00 USDT" in second and "недоступны" in second
+    assert "5.00 USDT" in second and "1 USD = 1 USDT" in second and "недоступны" not in second
     assert "0.00 USDT" in third and "недоступны" not in third
 
 

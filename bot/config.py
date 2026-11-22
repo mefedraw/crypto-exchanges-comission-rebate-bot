@@ -53,9 +53,6 @@ EXCHANGE_SPECS: tuple[ExchangeSpec, ...] = (
 
 SPEC_BY_CODE: dict[str, ExchangeSpec] = {spec.code: spec for spec in EXCHANGE_SPECS}
 RETIRED_EXCHANGES = frozenset({"bitmart"})
-# Binance performance is attributable in USD; the settlement asset/amount is not.
-# Clearing an operational pause must not enable USD estimates for a USDT ledger.
-NO_NATIVE_PAYOUT_DATA = frozenset({"binance"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,7 +214,7 @@ class Settings(BaseSettings):
 
     @property
     def disabled_exchanges(self) -> frozenset[str]:
-        return NO_NATIVE_PAYOUT_DATA.union(filter(None, self.disabled_exchanges_raw.split(",")))
+        return frozenset(filter(None, self.disabled_exchanges_raw.split(",")))
 
     def exchange_enabled(self, code: str) -> bool:
         return code in SPEC_BY_CODE and code not in self.disabled_exchanges

@@ -9,10 +9,11 @@ for unreleased work snapshots.
 
 ### Fixed
 
-- Binance Referral Pro membership and USD diagnostics use the invitee performance
-  endpoint instead of the unrelated Link broker API. The worker stays on hold
-  until settlement amounts and assets can be attributed to UIDs. A dashboard
-  estimate cannot become a USDT accrual or a confirmed zero.
+- Binance Referral Pro now accrues dated commission for the authenticated partner's
+  invitees at the owner's fixed 1 USD = 1 gross USDT rate. Ordinary rank fees apply.
+  Unconfirmed UIDs, API errors and unverified missing metrics create no ledger rows.
+  Historical recovery reconciles daily reports before posting and can be run twice
+  without paying twice. Newly recovered funds have a full claim window.
 
 - WEEX now preserves exact timezone-aware query bounds at millisecond precision,
   with overlap-safe legacy UTC coverage at the UTC+8 accrual cutover.

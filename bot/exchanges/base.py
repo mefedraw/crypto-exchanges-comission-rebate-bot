@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
@@ -138,6 +138,10 @@ class ExchangeAdapter(ABC):
         the exchange exposes a membership/invitee endpoint.
         """
         return ReferralCheck.UNVERIFIABLE
+
+    async def accrual_start(self, uid: str, since: date) -> date | None:
+        """Earliest eligible reporting day. None defers this account until next cycle."""
+        return since
 
     async def get_downline_total(self, date_from: datetime, date_to: datetime) -> Decimal | None:
         """Total USDT rebate across the WHOLE affiliate downline over the period.
