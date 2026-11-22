@@ -1,9 +1,32 @@
 # tests/test_payout_commission.py
+from datetime import date
 from decimal import Decimal
 
 import pytest
 
-from bot.payout.commission import commission_for, net_for, totals
+from bot.payout.commission import accrual_fee, commission_for, net_for, totals
+
+
+@pytest.mark.parametrize(
+    ("rank", "override", "code", "day", "expected"),
+    [
+        (1, None, "binance", 22, ".10"),
+        (1, None, "binance", 23, ".11"),
+        (1, ".02", "binance", 23, ".03"),
+        (1, ".99", "binance", 23, ".11"),
+        (2, None, "binance", 23, ".08"),
+        (3, None, "binance", 23, ".04"),
+        (4, None, "binance", 23, ".01"),
+        (1, "0", "binance", 23, ".01"),
+        (0, None, "binance", 23, "0"),
+        (1, None, "blofin", 23, ".10"),
+        (4, None, "bybit", 23, "0"),
+    ],
+)
+def test_exchange_fee_by_earning_day(rank, override, code, day, expected):
+    assert accrual_fee(
+        rank, Decimal(override) if override is not None else None, code, date(2026, 11, day)
+    ) == Decimal(expected)
 
 
 def test_commission_and_net_per_rank():

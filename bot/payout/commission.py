@@ -4,11 +4,14 @@ summed; never recomputed retroactively. See PAYOUT_BUSINESS_LOGIC.md §5.2.
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 from bot.payout.ranks import fee_pct, is_payable
 
 Tranche = tuple[Decimal, int]  # (amount_usdt, rank_at_accrual)
+BINANCE_SURCHARGE_FROM = date(2026, 11, 23)  # First eligible UTC+8 earning day.
+BINANCE_SURCHARGE = Decimal("0.01")
 
 
 def commission_for(amount: Decimal, rank: int) -> Decimal:
@@ -30,6 +33,18 @@ def effective_fee(rank: int, override_pct: Decimal | None) -> Decimal:
     if override_pct is None:
         return base
     return min(base, override_pct)
+
+
+def accrual_fee(rank: int, override_pct: Decimal | None, exchange: str, day: date) -> Decimal:
+    """The Binance surcharge is additive after the regular fee, never an FX haircut."""
+    if rank == 0:
+        return Decimal(0)
+    base = effective_fee(rank, override_pct)
+    return (
+        base + BINANCE_SURCHARGE
+        if exchange == "binance" and day >= BINANCE_SURCHARGE_FROM
+        else base
+    )
 
 
 def totals(tranches: list[Tranche]) -> tuple[Decimal, Decimal, Decimal]:

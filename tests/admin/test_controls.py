@@ -15,6 +15,7 @@ from aiogram.types import Chat, Message
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.accrual import repository as accrual_repo
 from bot.admin import repository as admin_repo
 from bot.admin import service as admin_service
 from bot.admin.router import (
@@ -150,6 +151,115 @@ async def test_show_stats_renders_overview(db_session: AsyncSession) -> None:
     assert "Пользователи: 2" in text
     assert "заблокировано: 1" in text
     assert "Активных UID: 1" in text
+
+
+@_async
+async def test_exchange_summary_uses_actual_linked_fees_only_once(db_session: AsyncSession) -> None:
+    first, end = date(2026, 7, 1), date(2026, 7, 19)
+    await _user(db_session, 3101)
+    await _user(db_session, 3102)
+    b1 = await _account(db_session, 3101, "binance", "101", status="archived")
+    b2 = await _account(db_session, 3102, "binance", "102")
+    bf = await _account(db_session, 3102, "blofin", "201")
+    gate = await _account(db_session, 3101, "gate", "301")
+    for acc, day, state, fee, final in (
+        (b1, first, "paid", ".07", True),
+        (b2, end, "reserved", ".03", True),
+        (bf, end, "expired", ".05", True),
+        (bf, end - timedelta(days=1), "available", "0", True),
+        (b2, end - timedelta(days=1), "accruing", ".1", False),
+        (b2, first - timedelta(days=1), "paid", ".1", True),
+        (b1, end + timedelta(days=1), "available", ".1", True),
+        (gate, end, "paid", ".1", True),
+    ):
+        row = await _accrual(
+            db_session,
+            acc.user_id,
+            acc.id,
+            accrual_date=day,
+            state=state,
+            effective_rank=1,
+            fee_pct=Decimal(fee),
+        )
+        row.finalized = final
+    # A booked adjustment has no rate to reapply; its actual fee delta is authoritative.
+    fix = await _accrual(
+        db_session,
+        b1.user_id,
+        b1.id,
+        accrual_date=end,
+        state="available",
+        effective_rank=1,
+        fee_pct=Decimal(0),
+    )
+    fix.finalized, fix.correction_key, fix.fee_pct = True, "test-linked-fee-adjustment", None
+    fix.commission_usdt = Decimal("-0.123456")
+    fix.net_usdt = fix.amount_usdt - fix.commission_usdt
+    await db_session.flush()
+    raw = {
+        "month": "2026-07",
+        "through": end.isoformat(),
+        "as_of": "2026-07-19T16:01:00+00:00",
+        "per_exchange": {"binance": "300", "gate": "20.12"},
+        "total_usdt": "320.12",
+        "errors": ["toobit"],
+        "unsupported": ["blofin"],
+        "disabled": ["mexc"],
+    }
+    await accrual_repo.save_downline_snapshot(db_session, raw)
+    overview = await admin_repo.admin_overview(
+        db_session, month_start=first, month_before=date(2026, 8, 1)
+    )
+    view = overview["downline"]
+    assert view["per_exchange"] == {"gate": "20.12"}
+    linked = view["linked_uids"]
+    assert {k: Decimal(v["fee"]) for k, v in linked.items()} == {
+        "binance": Decimal("9.876544"),
+        "blofin": Decimal("5"),
+    }
+    assert Decimal(linked["binance"]["gross"]) == 300
+    assert Decimal(linked["blofin"]["gross"]) == 200
+    assert linked["binance"]["last_day"] == linked["blofin"]["last_day"] == end.isoformat()
+    assert Decimal(view["total_usdt"]) == Decimal("520.12")
+    assert view["unsupported"] == [] and view["errors"] == ["toobit"]
+    assert view["disabled"] == ["mexc"]
+    assert await admin_repo.exchange_summary(db_session) == view
+    assert await accrual_repo.get_downline_snapshot(db_session) == raw
+
+
+@_async
+async def test_linked_fees_rollover_zero_and_pause(db_session: AsyncSession) -> None:
+    first = date(2026, 8, 1)
+    await _user(db_session, 3103)
+    acc = await _account(db_session, 3103, "binance", "103")
+    row = await _accrual(
+        db_session,
+        acc.user_id,
+        acc.id,
+        accrual_date=first,
+        state="available",
+        effective_rank=1,
+        fee_pct=Decimal(".1"),
+    )
+    row.finalized = True
+    await db_session.flush()
+    raw = {
+        "month": "2026-08",
+        "through": first.isoformat(),
+        "as_of": "2026-07-31T16:05:00+00:00",
+        "per_exchange": {"binance": "0"},
+        "total_usdt": "0",
+    }
+    await accrual_repo.save_downline_snapshot(db_session, raw)
+    view = await admin_repo.exchange_summary(db_session)
+    empty = {"gross": "0", "fee": "0", "last_day": None}
+    assert view["linked_uids"] == {"binance": empty, "blofin": empty} and view["total_usdt"] == "0"
+    await accrual_repo.save_downline_snapshot(
+        db_session, {**raw, "as_of": "2026-08-02T01:00:00+00:00", "disabled": ["binance"]}
+    )
+    view = await admin_repo.exchange_summary(db_session)
+    assert view["linked_uids"] == {"blofin": empty} and "binance" not in view["per_exchange"]
+    assert view["total_usdt"] == "0" and view["disabled"] == ["binance"]
 
 
 @_async

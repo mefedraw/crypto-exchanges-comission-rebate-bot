@@ -19,6 +19,11 @@ longer lag from a sibling exchange). Missing commission is not zero: absent
 metrics need proof from registration or matching dated gross **and volume**
 with and without the missing interval. Ambiguous data remains unresolved.
 Historical ranks, next-day upgrades and ordinary fee overrides apply.
+From the 2026-11-23 earning day (UTC+8), add one percentage point to the
+effective fee after any personal discount. For 100 USD at a 10% base fee the
+booked gross is 100 USDT, fee 11, net 89. Late or recovered earlier days still
+use their historical rate. The admin total includes the gross of linked UIDs,
+not the fee again and not the whole affiliate account.
 
 ## Reviewed historical cutover
 

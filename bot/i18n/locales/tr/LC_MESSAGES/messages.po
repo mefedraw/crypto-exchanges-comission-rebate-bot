@@ -19,6 +19,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
+msgid "Binance: с {v0} (UTC+8) к обычному сбору добавляется 1 процентный пункт."
+msgstr "Binance: {v0} (UTC+8) tarihinden itibaren standart komisyon oranına 1 yüzde puanı eklenir."
+
 msgid "данные по UID пока недоступны"
 msgstr "bu UID için veriler henüz mevcut değil"
 

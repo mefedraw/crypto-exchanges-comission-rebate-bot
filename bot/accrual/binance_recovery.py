@@ -18,7 +18,7 @@ from bot.accrual import repository as repo
 from bot.accrual.worker import _day_bounds_payout_tz
 from bot.config import RETIRED_EXCHANGES, get_settings
 from bot.db.engine import make_engine, make_sessionmaker
-from bot.db.models.identity import User
+from bot.db.models.identity import ExchangeAccount, User
 from bot.db.models.invites import InviteAttribution
 from bot.db.models.ledger import RebateAccrual
 from bot.db.models.ops import AuditEvent
@@ -26,7 +26,7 @@ from bot.db.settings import DbSettings
 from bot.exchanges.base import ExchangeAdapter
 from bot.exchanges.binance import POLICY, BinanceAdapter
 from bot.exchanges.registry import build_adapters
-from bot.payout.commission import effective_fee
+from bot.payout.commission import accrual_fee
 from bot.payout.expiry import LIFETIME_DAYS, PAYOUT_TZ
 from bot.payout.rank_timing import (
     day_effective_rank,
@@ -130,10 +130,14 @@ async def plan_owner(
         raise ValueError("Inactive user requires a separate review")
     account_ids = {t.account for t in owner_sources}
     override, since = await repo.get_commission_override(s, owner)
-    history = (await s.scalars(select(RebateAccrual).where(RebateAccrual.user_id == owner))).all()
+    history = await s.execute(
+        select(RebateAccrual, ExchangeAccount.exchange)
+        .join(ExchangeAccount, ExchangeAccount.id == RebateAccrual.account_id)
+        .where(RebateAccrual.user_id == owner)
+    )
     saved: dict[tuple[int, date], RebateAccrual] = {}
-    siblings: dict[date, list[RebateAccrual]] = defaultdict(list)
-    for row in history:
+    siblings: dict[date, list[tuple[RebateAccrual, str]]] = defaultdict(list)
+    for row, exchange in history:
         d = row.accrual_date
         if row.account_id in account_ids:
             if d > through and row.correction_key is None:
@@ -144,7 +148,7 @@ async def plan_owner(
                 )
             saved[row.account_id, d] = row
         elif d >= month_start(first):
-            siblings[d].append(row)
+            siblings[d].append((row, exchange))
     expected = {(t.account, d) for t, ds in owner_sources.items() for d in ds}
     if saved.keys() - expected:
         raise ValueError("Existing Binance rows outside confirmed source coverage")
@@ -158,17 +162,18 @@ async def plan_owner(
     )
     for d in iter_days(current, through):
         source_today = [(t, ds[d]) for t, ds in owner_sources.items() if d in ds]
-        gross = sum((r.amount_usdt for r in siblings[d]), ZERO) + sum(
+        gross = sum((r.amount_usdt for r, _ in siblings[d]), ZERO) + sum(
             (v.gross for _, v in source_today), ZERO
         )
         rank = day_effective_rank(cumulative, gross, carry1, carry2)
-        fee = effective_fee(rank, override if since and d >= since else None) if rank else ZERO
-        for row in siblings[d]:
+        day_override = override if since and d >= since else None
+        fee = accrual_fee(rank, day_override, "binance", d)
+        for row, exchange in siblings[d]:
             if (
                 d >= first
                 and row.amount_usdt > 0
                 and row.correction_key is None
-                and row.fee_pct != fee
+                and row.fee_pct != accrual_fee(rank, day_override, exchange, d)
             ):
                 raise ValueError(f"Sibling fee requires its own reconciliation on {d}")
         for target, value in source_today:
@@ -195,7 +200,7 @@ async def plan_owner(
             months[current] = achieved, cumulative
             current, carry2, carry1, cumulative = d + timedelta(days=1), carry1, achieved, ZERO
     if any(e.source.gross and not e.exists for e in entries):
-        if any(d > through and any(r.amount_usdt for r in rs) for d, rs in siblings.items()):
+        if any(d > through and any(r.amount_usdt for r, _ in rs) for d, rs in siblings.items()):
             raise ValueError("Positive sibling rows after cutoff require separate fee review")
         if await s.get(InviteAttribution, owner) is not None:
             raise ValueError("Historical partner share requires a separate review")

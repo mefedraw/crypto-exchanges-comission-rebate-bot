@@ -25,7 +25,7 @@ from bot.config import RETIRED_EXCHANGES, Settings, get_settings
 from bot.exchanges.base import ExchangeAdapter
 from bot.notifications import repository as notif_repo
 from bot.partners import rank_control
-from bot.payout.commission import effective_fee
+from bot.payout.commission import accrual_fee
 from bot.payout.expiry import PAYOUT_TZ, available_at, expires_at
 from bot.payout.rank_timing import (
     day_effective_rank,
@@ -465,6 +465,7 @@ class AccrualWorker:
         pollable = [acc for acc in accounts if acc.id in eligible_since]
         if not pollable:
             return
+        exchange_by_id = {acc.id: acc.exchange for acc in pollable}
         # Settlement lag: if ANY of this user's exchanges credits commission late
         # (e.g. KuCoin), defer this user's whole recent window by the largest such lag —
         # never freeze a day whose data hasn't settled. Whole-user (not per-account) so a
@@ -664,7 +665,7 @@ class AccrualWorker:
                         )
                         else None
                     )
-                    fee = effective_fee(rank, day_override)
+                    fee = accrual_fee(rank, day_override, exchange_by_id[acc_id], d)
                     commission = usdt_equiv * fee
                     net = usdt_equiv - commission
                     net_native = native - native * fee

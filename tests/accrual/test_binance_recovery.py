@@ -5,14 +5,85 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy import select
 
+from bot.accrual.adapters import MappingAdapterProvider
 from bot.accrual.binance_recovery import Day, Target, reconcile, source_days
+from bot.accrual.worker import AccrualWorker
+from bot.admin.repository import recompute_current_month_unpaid
 from bot.db.models.identity import ExchangeAccount, User
 from bot.db.models.ledger import RebateAccrual
 from bot.db.models.ops import AuditEvent
-from bot.exchanges.base import CommissionResult
+from bot.exchanges.base import CommissionResult, ExchangeAdapter
 from bot.exchanges.binance import POLICY
+from tests.conftest import make_settings
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+
+async def test_surcharge_worker_recovery_and_personal_rate_use_same_earning_day(db_session):
+    s = db_session
+    prior, first = date(2026, 11, 22), date(2026, 11, 23)
+    now = datetime(2026, 11, 27, tzinfo=UTC)
+    owner = 989818
+
+    class Days(ExchangeAdapter):
+        def __init__(self, code):
+            self.code = self.name = code
+
+        async def get_commission(self, uid, date_from, date_to):
+            return CommissionResult(
+                self.code,
+                uid,
+                date_from,
+                date_to,
+                total_usdt=Decimal(5 if date_from.date() == prior else 100),
+                settlement_note=POLICY if self.code == "binance" else None,
+                raw_records_count=1,
+            )
+
+    s.add(User(id=owner, role="user", status="active"))
+    await s.flush()
+    accounts = [
+        ExchangeAccount(
+            user_id=owner, exchange=ex, uid=str(i + 1), status="active", accrual_since=prior
+        )
+        for i, ex in enumerate(("binance", "blofin"))
+    ]
+    s.add_all(accounts)
+    await s.flush()
+    worker = AccrualWorker(
+        None,
+        MappingAdapterProvider({a.exchange: Days(a.exchange) for a in accounts}),
+        now=lambda: now,
+        settings=make_settings(),
+    )
+    for _ in range(2):
+        await worker._process_user(s, owner, accounts, first, first.replace(day=1), now)
+    rows = (await s.scalars(select(RebateAccrual).where(RebateAccrual.user_id == owner))).all()
+    assert len(rows) == 4
+    amounts = {
+        (r.account_id, r.accrual_date): (r.amount_usdt, r.commission_usdt, r.net_usdt) for r in rows
+    }
+    assert (
+        amounts[accounts[0].id, prior]
+        == amounts[accounts[1].id, prior]
+        == (5, Decimal(".5"), Decimal("4.5"))
+    )
+    assert amounts[accounts[0].id, first] == (100, 11, 89)
+    assert amounts[accounts[1].id, first] == (100, 10, 90)
+    target = Target(owner, accounts[0].id, accounts[0].uid, prior, 2)
+    checked = await reconcile(
+        s, {target: {prior: Day(Decimal(5), 1), first: Day(Decimal(100), 1)}}, first, now
+    )
+    assert checked["accounts"][0]["new_days"] == 0
+    await recompute_current_month_unpaid(
+        s, owner, Decimal(0), first.replace(day=1), date(2026, 12, 1)
+    )
+    assert {(r.account_id, r.accrual_date): r.fee_pct for r in rows} == {
+        (accounts[0].id, prior): 0,
+        (accounts[1].id, prior): 0,
+        (accounts[0].id, first): Decimal(".01"),
+        (accounts[1].id, first): 0,
+    }
 
 
 async def test_period_control_must_match_daily_reports():

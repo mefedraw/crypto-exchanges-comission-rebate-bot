@@ -9,6 +9,13 @@ for unreleased work snapshots.
 
 ### Fixed
 
+- The admin exchange summary includes the booked gross of linked Binance and
+  BloFin UIDs for the displayed closed days. Their booked fee is shown separately,
+  never added twice. Other exchanges retain their whole-network figures.
+- From the 2026-11-23 UTC+8 earning day, Binance alone adds one percentage point
+  to the ordinary (rank or personal) fee. The gross USD-to-USDT rule stays 1:1;
+  earlier earning days and existing balances are not repriced by this change.
+
 - Binance Referral Pro now accrues dated commission for the authenticated partner's
   invitees at the owner's fixed 1 USD = 1 gross USDT rate. Ordinary rank fees apply.
   Unconfirmed UIDs, API errors and unverified missing metrics create no ledger rows.
