@@ -6,7 +6,6 @@ import pytest
 from sqlalchemy import select
 
 from bot.accrual.binance_recovery import Day, Target, reconcile, source_days
-from bot.db.engine import make_sessionmaker
 from bot.db.models.identity import ExchangeAccount, User
 from bot.db.models.ledger import RebateAccrual
 from bot.db.models.ops import AuditEvent
@@ -32,13 +31,13 @@ async def test_period_control_must_match_daily_reports():
         await source_days(Source(), Target(1, 1, "123", day, 2), day + timedelta(days=1))
 
 
-async def test_preview_apply_and_repeat_preserve_paid_rows_and_claim_window(pg_engine):
-    sessionmaker = make_sessionmaker(pg_engine)
+async def test_preview_apply_and_repeat_preserve_paid_rows_and_claim_window(db_session):
+    s = db_session
     owner = 989817
     day = date(2026, 8, 30)
     end = date(2026, 9, 1)
     now = datetime(2026, 11, 5, tzinfo=UTC)
-    async with sessionmaker.begin() as s:
+    async with s.begin():
         s.add(User(id=owner, role="user", status="active"))
         await s.flush()
         acc = ExchangeAccount(
@@ -54,7 +53,7 @@ async def test_preview_apply_and_repeat_preserve_paid_rows_and_claim_window(pg_e
             end: Day(Decimal("20"), 1),
         }
     }
-    async with sessionmaker.begin() as s:
+    async with s.begin():
         preview = await reconcile(s, sources, end, now)
         assert Decimal(preview["accounts"][0]["new_net"]) == Decimal("140.40")
         assert (
@@ -66,7 +65,7 @@ async def test_preview_apply_and_repeat_preserve_paid_rows_and_claim_window(pg_e
         with pytest.raises(ValueError, match="plan changed"):
             await reconcile(s, sources, end, now, "wrong")
         await reconcile(s, sources, end, now, preview["digest"])
-    async with sessionmaker.begin() as s:
+    async with s.begin():
         rows = (
             await s.scalars(
                 select(RebateAccrual)
